@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "208449690786",
+    "project_id": "tu-billetera-b62b5",
+    "storage_bucket": "tu-billetera-b62b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:208449690786:android:6c4e848ef1681707ab4bfb",
+        "android_client_info": {
+          "package_name": "com.example.tubilletera"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHwtj8wFeadaaaYGO6VY-B8AK_NB1FpG4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

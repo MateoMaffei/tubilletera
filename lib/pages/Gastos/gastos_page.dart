@@ -1,0 +1,609 @@
+import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
+import 'package:tubilletera/helpers/iconos_disponibles.dart';
+import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/model/categoria_hive.dart';
+import 'package:tubilletera/model/gasto_hive.dart';
+import 'package:tubilletera/pages/Gastos/gasto_form_page.dart';
+import 'package:tubilletera/services/categoria_services.dart';
+import 'package:tubilletera/services/gasto_services.dart';
+import 'package:tubilletera/theme/app_colors.dart';
+
+class GastosPage extends StatefulWidget {
+  const GastosPage({super.key});
+
+  @override
+  State<GastosPage> createState() => _GastosPageState();
+}
+
+class _GastosPageState extends State<GastosPage> {
+  final gastoService = GastoService();
+  final categoriaService = CategoriaService();
+
+  late List<Categoria> categorias;
+
+
+  DateTime selectedDate = DateTime.now();
+  String? categoriaSeleccionada;
+  bool? estadoSeleccionado;
+
+  bool mostrarFiltros = false;
+
+  DateTime tempDate = DateTime.now();
+  String? tempCategoria;
+  bool? tempEstado;
+
+  final formatPeso = NumberFormat.currency(
+    locale: 'es_AR',
+    symbol: '',
+    decimalDigits: 2);
+
+  List<Gasto> _filtrarGastos() {
+    final gastos = gastoService.obtenerTodos();
+
+    final filtrados = gastos.where((gasto) {
+      final mismoMes = gasto.fechaVencimiento.month == selectedDate.month &&
+          gasto.fechaVencimiento.year == selectedDate.year;
+
+      final coincideCategoria = categoriaSeleccionada == null || gasto.idCategoria == categoriaSeleccionada;
+      final coincideEstado = estadoSeleccionado == null || gasto.estado == estadoSeleccionado;
+
+      return mismoMes && coincideCategoria && coincideEstado;
+    }).toList();
+
+    filtrados.sort((a, b) {
+      if (a.estado != b.estado) {
+        return a.estado ? 1 : -1;
+      }
+      return a.fechaVencimiento.compareTo(b.fechaVencimiento);
+    });
+
+    return filtrados;
+  }
+
+  void _confirmarCambioEstado(Gasto gasto) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('¿Desea confirmar el pago del gasto?'),
+        content: Text(
+          'Haciendo esto su gasto pasara a estado pago y ya no se sumara a las deudas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              gasto.estado = !gasto.estado;
+              await gasto.save();
+              if (mounted) Navigator.pop(context);
+              setState(() {
+                gasto.estado = true;
+                gastoService.pagarGasto(gasto);
+              });
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmarEliminar(Gasto gasto) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar gasto'),
+        content: Text('¿Estás seguro de eliminar "${gasto.descripcion}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final box = Hive.box<Gasto>('gastoBox');
+              final key = box.keys.firstWhere(
+                (k) => box.get(k)?.id == gasto.id,
+              );
+              await box.delete(key);
+              if (mounted) Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmarDuplicar(Gasto gasto) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('¿Duplicar gasto?'),
+        content: Text(
+          '¿Querés copiar "${gasto.descripcion}" para el mes siguiente?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final nuevoMes = DateTime(
+                gasto.fechaVencimiento.year,
+                gasto.fechaVencimiento.month + 1,
+                gasto.fechaVencimiento.day,
+              );
+
+              final copia = Gasto(
+                id: DateTime.now().millisecondsSinceEpoch
+                    .toString(), // o con UUID
+                descripcion: gasto.descripcion,
+                idCategoria: gasto.idCategoria,
+                monto: gasto.monto,
+                fechaVencimiento: nuevoMes,
+                detalles: gasto.detalles,
+                estado: false, // nueva copia es pendiente
+                fechaCreacion: DateTime.now(),
+              );
+
+              final box = Hive.box<Gasto>('gastoBox');
+              await box.add(copia);
+
+              if (mounted) Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Duplicar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGastoCard(Gasto gasto, Categoria categoria) {
+    final ahora = DateTime.now();
+    final diasRestantes = gasto.fechaVencimiento.difference(ahora).inDays;
+    final estaVencido = diasRestantes < 0;
+
+    // Color dinámico del monto
+    Color colorImporte;
+    if (gasto.estado) {
+      colorImporte = AppColors.abonadoText;
+    } else if (estaVencido) {
+      colorImporte = AppColors.vencidoText;
+    } else if (diasRestantes <= 5) {
+      colorImporte = AppColors.porVencerText;
+    } else {
+      colorImporte = AppColors.pendienteText;
+    }
+
+    // Estado visual
+    String estadoTexto = gasto.estado
+        ? 'Abonado'
+        : estaVencido
+        ? 'Vencido'
+        : diasRestantes <= 5
+        ? 'Por vencer'
+        : 'Pendiente';
+
+    Color estadoColor = gasto.estado
+        ? AppColors.abonadoText
+        : estaVencido
+        ? AppColors.vencidoText
+        : diasRestantes <= 5
+        ? AppColors.porVencerText
+        : AppColors.pendienteText;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Categoría e ícono
+            Row(
+              children: [
+                Icon(
+                  IconHelper.iconList[categoria.icono] ?? Icons.category,
+                  color: Colors.grey[700],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  categoria.descripcion,
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: estadoColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    estadoTexto,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: estadoColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  onSelected: (value) async {
+                    switch (value) {
+                      case 'editar':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GastoFormPage(gasto: gasto),
+                          ),
+                        ).then((_) => setState(() {}));
+                        break;
+                      case 'estado':
+                        _confirmarCambioEstado(gasto);
+                        break;
+                      case 'duplicar':
+                        _confirmarDuplicar(gasto);
+                        break;
+                      case 'eliminar':
+                        _confirmarEliminar(gasto);
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      enabled: gasto.estado == true ? false : true,
+                      value: 'estado',
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: gasto.estado == true ? Colors.lightGreen : Colors.green),
+                          const SizedBox(width: 8),
+                          Text('Pagar', style: TextStyle(color: gasto.estado == true ? Colors.lightGreen : Colors.green)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'editar',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.edit, color: Colors.purple),
+                          SizedBox(width: 8),
+                          Text(
+                            'Editar',
+                            style: TextStyle(color: Colors.purple),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'duplicar',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.copy, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Text(
+                            'Copiar',
+                            style: TextStyle(color: Colors.orange),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'eliminar',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Eliminar', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Descripción y monto
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    gasto.descripcion,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '\$ ${formatPeso.format(gasto.monto)}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorImporte,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Fecha de vencimiento
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Vence: ${DateFormat('dd/MM/yyyy').format(gasto.fechaVencimiento)}',
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                TextButton.icon(
+                  icon: const Icon(
+                    Icons.visibility,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                  label: const Text(
+                    'Detalles',
+                    style: TextStyle(fontSize: 15, color: Colors.blue),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    minimumSize: const Size(0, 30),
+                  ),
+                  onPressed: () => _mostrarDetallesDialog(gasto),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetallesDialog(Gasto gasto) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(gasto.descripcion),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (gasto.detalles?.isNotEmpty == true) ...[
+              const Text(
+                'Detalles:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(gasto.detalles!),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              'Fecha de creación: ${DateFormat('dd/MM/yyyy').format(gasto.fechaCreacion)}',
+            ),
+            Text(
+              'Fecha de vencimiento: ${DateFormat('dd/MM/yyyy').format(gasto.fechaVencimiento)}',
+            ),
+            Text('Estado: ${gasto.estado ? "Abonado" : "Pendiente"}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Gasto> _gastosPendientes() {
+    final todos = _filtrarGastos();
+    final pendientes = todos
+        .where((g) => !g.estado)
+        .toList()
+      ..sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
+    return pendientes;
+  }
+
+  List<Gasto> _gastosAbonados() {
+    final todos = _filtrarGastos();
+    final abonados = todos
+        .where((g) => g.estado)
+        .toList()
+      ..sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
+    return abonados;
+  }
+
+  Categoria _buscarCategoria(String id) {
+    return categorias.firstWhere(
+      (cat) => cat.id == id,
+      orElse: () => Categoria(id: '', descripcion: 'Desconocida', icono: ''),
+    );
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    tempDate = selectedDate;
+    tempCategoria = categoriaSeleccionada;
+    tempEstado = estadoSeleccionado;
+    categorias = categoriaService.obtenerTodas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Gastos', style: TextStyle( color: AppColors.secondaryButtonText),),
+        actions: [
+          IconButton(
+            icon: Icon(
+              mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
+            ),
+            color: AppColors.secondaryButtonText,
+            onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
+          ),
+        ],
+      ),
+      drawer: const MainDrawer(currentRoute: '/gastos'),
+      body: Column(
+        children: [
+          AnimatedCrossFade(
+            crossFadeState:
+                mostrarFiltros ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            duration: const Duration(milliseconds: 300),
+            firstChild: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final picked = await showMonthPicker(
+                        context: context,
+                        initialDate: tempDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100)
+                      );
+                      if (picked != null) {
+                        setState(() => tempDate = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(DateFormat('MMMM yyyy', 'es_ES').format(selectedDate).toUpperCase()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade100,
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButton<String?>(
+                    isExpanded: true,
+                    value: tempCategoria,
+                    hint: const Text('Todas las categorías'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todas')),
+                      ...categorias.map((cat) => DropdownMenuItem(
+                            value: cat.id,
+                            child: Text(cat.descripcion),
+                          )),
+                    ],
+                    onChanged: (value) => setState(() => tempCategoria = value),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButton<bool?>(
+                    isExpanded: true,
+                    value: tempEstado,
+                    hint: const Text('Estado'),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('Todos')),
+                      DropdownMenuItem(value: true, child: Text('Abonados')),
+                      DropdownMenuItem(value: false, child: Text('Pendientes')),
+                    ],
+                    onChanged: (value) => setState(() => tempEstado = value),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        selectedDate = tempDate;
+                        categoriaSeleccionada = tempCategoria;
+                        estadoSeleccionado = tempEstado;
+                      });
+                    },
+                    icon: const Icon(Icons.filter_alt, color: Colors.black87),
+                    label: const Text('Aplicar filtros', style: TextStyle(color: Colors.black87)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            secondChild: const SizedBox.shrink(),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              children: [
+                ..._gastosPendientes().map((gasto) {
+                  final categoria = _buscarCategoria(gasto.idCategoria);
+                  return _buildGastoCard(gasto, categoria);
+                }),
+
+                if (_gastosAbonados().isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: const [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            'Abonados',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                  ),
+                  ..._gastosAbonados().map((gasto) {
+                    final categoria = _buscarCategoria(gasto.idCategoria);
+                    return _buildGastoCard(gasto, categoria);
+                  }),
+                ],
+              ],
+            ),
+          ),
+
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push<Gasto?>(
+            context,
+            MaterialPageRoute(builder: (_) => const GastoFormPage()),
+          );
+          setState(() {}); // Refresca la lista
+        },
+        backgroundColor: AppColors.secondaryButton,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
