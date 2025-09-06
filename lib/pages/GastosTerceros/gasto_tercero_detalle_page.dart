@@ -92,6 +92,8 @@ class _GastoTerceroDetallePageState extends State<GastoTerceroDetallePage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: DataTable(
+          columnSpacing: 12,
+          horizontalMargin: 12,
           columns: const [
             DataColumn(label: Text('N°')),
             DataColumn(label: Text('Fecha')),
@@ -102,10 +104,17 @@ class _GastoTerceroDetallePageState extends State<GastoTerceroDetallePage> {
             return DataRow(
               cells: [
                 DataCell(Text(c.numero.toString())),
-                DataCell(Text(DateFormat('dd/MM/yyyy').format(c.fechaVencimiento)),
-                    onTap: () => _editarFecha(c)),
-                DataCell(Text(formatPeso.format(c.monto)), onTap: () => _editarMonto(c)),
-                DataCell(Checkbox(value: c.pagada, onChanged: (v) => _togglePagada(c, v))),
+                DataCell(
+                  Text(DateFormat('dd/MM/yyyy').format(c.fechaVencimiento)),
+                  onTap: () => _editarFecha(c),
+                ),
+                DataCell(
+                  Text(formatPeso.format(c.monto)),
+                  onTap: () => _editarMonto(c),
+                ),
+                DataCell(
+                  Checkbox(value: c.pagada, onChanged: (v) => _togglePagada(c, v)),
+                ),
               ],
             );
           }).toList(),
