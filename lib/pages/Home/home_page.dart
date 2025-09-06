@@ -7,6 +7,8 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
+import 'package:tubilletera/model/gasto_tercero_hive.dart';
+import 'package:tubilletera/services/gasto_tercero_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class HomePage extends StatefulWidget {
@@ -23,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final gastosBox = Hive.box<Gasto>('gastoBox');
     final categoriasBox = Hive.box<Categoria>('categoriasBox');
+    final tercerosService = GastoTerceroService();
     final usersBox = Hive.box('usersBox');
     final email = usersBox.get('loggedUser');
     final user = usersBox.get(email);
@@ -34,8 +37,17 @@ class _HomePageState extends State<HomePage> {
       g.fechaVencimiento.month == selectedMonth.month &&
       g.fechaVencimiento.year == selectedMonth.year).toList();
 
-    final totalGastado = todosLosGastos.fold<double>(0.0, (sum, g) => sum + g.monto);
-    final totalPagado = todosLosGastos.where((g) => g.estado).fold<double>(0.0, (sum, g) => sum + g.monto);
+    final List<CuotaTercero> cuotasTerceros = tercerosService.cuotasDelMes(selectedMonth.year, selectedMonth.month);
+
+    final totalGastosPropios = todosLosGastos.fold<double>(0.0, (sum, g) => sum + g.monto);
+    final totalPropiosPagado = todosLosGastos.where((g) => g.estado).fold<double>(0.0, (sum, g) => sum + g.monto);
+
+    final totalTerceros = cuotasTerceros.fold<double>(0.0, (sum, c) => sum + c.monto);
+    final totalTercerosPagado = cuotasTerceros.where((c) => c.pagada).fold<double>(0.0, (sum, c) => sum + c.monto);
+    final totalTercerosPendiente = totalTerceros - totalTercerosPagado;
+
+    final totalGastado = totalGastosPropios + totalTerceros;
+    final totalPagado = totalPropiosPagado + totalTercerosPagado;
     final restantePagar = totalGastado - totalPagado;
     final disponible = sueldo - totalGastado;
 
@@ -163,6 +175,8 @@ class _HomePageState extends State<HomePage> {
                     _infoRow("✅ Pagado", formatPeso.format(totalPagado), color: Colors.green),
                     const Divider(),
                     _infoRow("🔴 Resta pagar", formatPeso.format(restantePagar), color: Colors.orange),
+                    const Divider(),
+                    _infoRow("🤝 Adeudado por terceros", formatPeso.format(totalTercerosPendiente), color: Colors.blue),
                   ],
                 ),
               ),
