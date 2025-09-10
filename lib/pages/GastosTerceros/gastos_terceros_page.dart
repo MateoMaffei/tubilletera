@@ -17,24 +17,62 @@ class GastosTercerosPage extends StatefulWidget {
 class _GastosTercerosPageState extends State<GastosTercerosPage> {
   final service = GastoTerceroService();
   final formatPeso = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
+  String? personaSeleccionada;
 
   @override
   Widget build(BuildContext context) {
     final gastos = service.obtenerTodos();
+    final personas = gastos.map((g) => g.persona).toSet().toList()..sort();
+    final filtrados = personaSeleccionada == null
+        ? gastos
+        : gastos.where((g) => g.persona == personaSeleccionada).toList();
+    final totalDebe = filtrados.fold<double>(0.0, (sum, g) {
+      return sum +
+          g.cuotas.where((c) => !c.pagada).fold(0.0, (s, c) => s + c.monto);
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Gastos de terceros')),
       drawer: MainDrawer(currentRoute: '/gastos_terceros'),
-      body: gastos.isEmpty
-          ? const Center(child: Text('Sin registros'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: gastos.length,
-              itemBuilder: (_, i) {
-                final g = gastos[i];
-                return _buildCard(g);
-              },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: DropdownButton<String?>(
+              isExpanded: true,
+              value: personaSeleccionada,
+              hint: const Text('Todas las personas'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todas')),
+                ...personas.map(
+                  (p) => DropdownMenuItem(value: p, child: Text(p)),
+                ),
+              ],
+              onChanged: (value) => setState(() => personaSeleccionada = value),
             ),
+          ),
+          if (personaSeleccionada != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Debe: ${formatPeso.format(totalDebe)}'),
+              ),
+            ),
+          Expanded(
+            child: filtrados.isEmpty
+                ? const Center(child: Text('Sin registros'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filtrados.length,
+                    itemBuilder: (_, i) {
+                      final g = filtrados[i];
+                      return _buildCard(g);
+                    },
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -51,6 +89,9 @@ class _GastosTercerosPageState extends State<GastosTercerosPage> {
   Widget _buildCard(GastoTercero g) {
     final pagadas = g.cuotas.where((c) => c.pagada).length;
     final proxima = g.cuotas.firstWhereOrNull((c) => !c.pagada);
+    final debe = g.cuotas
+        .where((c) => !c.pagada)
+        .fold<double>(0.0, (s, c) => s + c.monto);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -65,6 +106,7 @@ class _GastosTercerosPageState extends State<GastosTercerosPage> {
                   '${DateFormat('dd/MM/yyyy').format(proxima.fechaVencimiento)}'),
             Text('Total: ${formatPeso.format(g.montoTotal)}'),
             Text('Por cuota: ${formatPeso.format(g.montoPorCuota)}'),
+            Text('Debe: ${formatPeso.format(debe)}'),
           ],
         ),
         onTap: () async {
