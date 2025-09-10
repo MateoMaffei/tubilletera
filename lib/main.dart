@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/gasto_tercero_hive.dart';
@@ -15,9 +16,14 @@ import 'package:tubilletera/pages/IniciarSesion/iniciar_sesion_page.dart';
 import 'package:tubilletera/pages/Registrarse/registrarse_page.dart';
 import 'package:tubilletera/pages/Splash/splash_page.dart';
 import 'package:tubilletera/theme/app_theme.dart';
+import 'firebase_options.dart';
 
-void main() async {  
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   await Hive.initFlutter();
   await Hive.openBox('usersBox');

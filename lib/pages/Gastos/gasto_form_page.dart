@@ -3,9 +3,12 @@ import 'package:flutter_multi_formatter/formatters/currency_input_formatter.dart
 import 'package:flutter_multi_formatter/formatters/money_input_enums.dart' show ThousandSeparator;
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
-import 'package:tubilletera/model/gasto_hive.dart';
-import 'package:tubilletera/services/categoria_services.dart';
-import 'package:tubilletera/services/gasto_services.dart';
+import 'package:tubilletera/model/gasto.dart';
+import 'package:tubilletera/model/categoria.dart';
+import 'package:tubilletera/services/categoria_service_firebase.dart';
+import 'package:tubilletera/services/gasto_service_firebase.dart';
+import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class GastoFormPage extends StatefulWidget {
   final Gasto? gasto;
@@ -22,8 +25,10 @@ class _GastoFormPageState extends State<GastoFormPage> {
   final montoController = TextEditingController();
   final detallesController = TextEditingController();
 
-  final gastoService = GastoService();
-  final categoriaService = CategoriaService();
+  final gastoService = GastoServiceFirebase();
+  final categoriaService = CategoriaServiceFirebase();
+  final _uuid = const Uuid();
+  List<Categoria> categorias = [];
 
   String? categoriaSeleccionada;
   DateTime? fechaVencimiento;
@@ -31,6 +36,7 @@ class _GastoFormPageState extends State<GastoFormPage> {
   @override
   void initState() {
     super.initState();
+    _loadCategorias();
     if (widget.gasto != null) {
       final g = widget.gasto!;
       descripcionController.text = g.descripcion;
@@ -46,6 +52,11 @@ class _GastoFormPageState extends State<GastoFormPage> {
         TextEditingValue(text: g.monto.toStringAsFixed(2)),
       ).text;
     }
+  }
+
+  Future<void> _loadCategorias() async {
+    categorias = await categoriaService.obtenerTodas();
+    setState(() {});
   }
 
   Future<void> _seleccionarFecha() async {
@@ -81,23 +92,31 @@ class _GastoFormPageState extends State<GastoFormPage> {
     final detalles = detallesController.text.trim().isEmpty ? null : detallesController.text.trim();
 
     if (widget.gasto == null) {
-      await gastoService.crearGasto(
+      final gasto = Gasto(
+        id: _uuid.v4(),
         descripcion: descripcion,
         idCategoria: categoriaSeleccionada!,
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
+        fechaCreacion: DateTime.now(),
         detalles: detalles,
+        estado: false,
+        idUsuario: FirebaseAuth.instance.currentUser!.uid,
       );
+      await gastoService.crearGasto(gasto);
     } else {
-      await gastoService.actualizarGasto(
-        widget.gasto!,
+      final gasto = Gasto(
+        id: widget.gasto!.id,
         descripcion: descripcion,
         idCategoria: categoriaSeleccionada!,
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
+        fechaCreacion: widget.gasto!.fechaCreacion,
         detalles: detalles,
-        estado: widget.gasto!.estado
+        estado: widget.gasto!.estado,
+        idUsuario: widget.gasto!.idUsuario,
       );
+      await gastoService.actualizarGasto(gasto);
     }
 
     if (mounted) Navigator.pop(context, widget.gasto);
@@ -105,8 +124,6 @@ class _GastoFormPageState extends State<GastoFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categorias = categoriaService.obtenerTodas();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.gasto == null ? 'Nuevo Gasto' : 'Editar Gasto'),

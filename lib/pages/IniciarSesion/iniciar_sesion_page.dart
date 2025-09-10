@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:tubilletera/components/custom_input.dart';
 import 'package:tubilletera/theme/app_colors.dart';
+import 'package:tubilletera/services/auth_services.dart';
+import 'package:tubilletera/services/migracion_service.dart';
 
 class IniciarSesionPage extends StatefulWidget {
   const IniciarSesionPage({super.key});
@@ -15,6 +17,8 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final LocalAuthentication auth = LocalAuthentication();
+  final authService = AuthService();
+  final migracionService = MigracionService();
 
   @override
   void initState() {
@@ -24,26 +28,27 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
 
   Future<void> _checkBiometricLogin() async {
     final box = Hive.box('usersBox');
-    final storedEmail = box.get('loggedUser');
+    final storedEmail = box.get('email');
+    final storedPassword = box.get('password');
+    if (storedEmail == null || storedPassword == null) return;
 
-    if (storedEmail != null) {
-      final user = box.get(storedEmail);
-      final usarBiometria = user?['biometria'] ?? false;
+    final isAvailable = await auth.canCheckBiometrics;
+    final isSupported = await auth.isDeviceSupported();
 
-      if (!usarBiometria) return;
+    if (isAvailable && isSupported) {
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Autenticarse con biometría',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
 
-      final isAvailable = await auth.canCheckBiometrics;
-      final isSupported = await auth.isDeviceSupported();
-
-      if (isAvailable && isSupported) {
-        final authenticated = await auth.authenticate(
-          localizedReason: 'Autenticarse con biometría',
-          options: const AuthenticationOptions(biometricOnly: true),
-        );
-
-        if (authenticated) {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
+      if (authenticated) {
+        try {
+          await authService.loginUsuario(email: storedEmail, password: storedPassword);
+          await migracionService.migrarDatos();
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
+        } catch (_) {}
       }
     }
   }
@@ -51,13 +56,16 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
   Future<void> login() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
-    final box = Hive.box('usersBox');
-    final user = box.get(email);
-
-    if (user != null && user['password'] == password) {
-      await box.put('loggedUser', email);
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
+    try {
+      await authService.loginUsuario(email: email, password: password);
+      final box = Hive.box('usersBox');
+      await box.put('email', email);
+      await box.put('password', password);
+      await migracionService.migrarDatos();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email o contraseña incorrectos")),
       );
@@ -66,8 +74,9 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
 
   Future<void> loginWithBiometrics() async {
     final box = Hive.box('usersBox');
-    final loggedEmail = box.get('loggedUser');
-    if (loggedEmail == null) {
+    final email = box.get('email');
+    final password = box.get('password');
+    if (email == null || password == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Primero debés iniciar sesión manualmente una vez.")),
       );
@@ -84,7 +93,17 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
       );
 
       if (authenticated) {
-        Navigator.pushReplacementNamed(context, '/home');
+        try {
+          await authService.loginUsuario(email: email, password: password);
+          await migracionService.migrarDatos();
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
+        } catch (_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Autenticación fallida")),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Autenticación fallida")),

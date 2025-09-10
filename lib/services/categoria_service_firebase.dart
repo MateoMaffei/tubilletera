@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:uuid/uuid.dart';
 import '../model/categoria.dart';
 
 class CategoriaServiceFirebase {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
-
   String get _uid => _auth.currentUser!.uid;
 
   Future<List<Categoria>> obtenerTodas() async {
@@ -20,6 +19,7 @@ class CategoriaServiceFirebase {
   }
 
   Future<void> crear(Categoria categoria) async {
+  Future<void> crearCategoria(String descripcion, String icono) async {
     await _firestore
         .collection('categorias')
         .doc(_uid)
@@ -36,7 +36,6 @@ class CategoriaServiceFirebase {
         .doc(categoria.id)
         .update(categoria.toMap());
   }
-
   Future<void> eliminar(String id) async {
     await _firestore
         .collection('categorias')

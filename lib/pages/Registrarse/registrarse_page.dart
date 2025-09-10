@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
 import 'package:tubilletera/theme/app_colors.dart';
+import 'package:tubilletera/services/auth_services.dart';
 
 class RegistrarsePage extends StatefulWidget {
   const RegistrarsePage({super.key});
@@ -19,11 +19,11 @@ class _RegistrarsePageState extends State<RegistrarsePage> {
   final apellidoController = TextEditingController();
   final sueldoController = TextEditingController();
   DateTime? fechaNacimiento;
+  final authService = AuthService();
 
   final _formKey = GlobalKey<FormState>();
 
   void register() async {
-    final box = Hive.box('usersBox');
     final email = emailController.text.trim();
     final pass = passController.text.trim();
     final repeat = repeatPassController.text.trim();
@@ -40,25 +40,23 @@ class _RegistrarsePageState extends State<RegistrarsePage> {
       return;
     }
 
-    if (box.containsKey(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("El email ya está registrado")),
+    try {
+      await authService.registrarUsuario(
+        email: email,
+        password: pass,
+        nombre: nombre,
+        apellido: apellido,
+        fechaNacimiento: fechaNacimiento ?? DateTime.now(),
+        sueldo: sueldo,
       );
-      return;
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al registrarse')),
+      );
     }
-
-    await box.put(email, {
-      'password': pass,
-      'nombre': nombre,
-      'apellido': apellido,
-      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
-      'sueldo': sueldo
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registro exitoso")),
-    );
-    Navigator.pushReplacementNamed(context, '/login');
   }
 
   Future<void> pickDate() async {
