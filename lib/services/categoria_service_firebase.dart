@@ -5,8 +5,8 @@ import '../model/categoria.dart';
 
 class CategoriaServiceFirebase {
   final _firestore = FirebaseFirestore.instance;
-  final _uid = FirebaseAuth.instance.currentUser!.uid;
-  final _uuid = const Uuid();
+  final _auth = FirebaseAuth.instance;
+  String get _uid => _auth.currentUser!.uid;
 
   Future<List<Categoria>> obtenerTodas() async {
     final snapshot = await _firestore
@@ -18,12 +18,8 @@ class CategoriaServiceFirebase {
     return snapshot.docs.map((e) => Categoria.fromMap(e.data())).toList();
   }
 
+  Future<void> crear(Categoria categoria) async {
   Future<void> crearCategoria(String descripcion, String icono) async {
-    final categoria = Categoria(
-      id: _uuid.v4(),
-      descripcion: descripcion,
-      icono: icono,
-    );
     await _firestore
         .collection('categorias')
         .doc(_uid)
@@ -32,17 +28,15 @@ class CategoriaServiceFirebase {
         .set(categoria.toMap());
   }
 
-  Future<void> actualizarCategoria(
-      String id, String descripcion, String icono) async {
+  Future<void> actualizar(Categoria categoria) async {
     await _firestore
         .collection('categorias')
         .doc(_uid)
         .collection('items')
-        .doc(id)
-        .update({'descripcion': descripcion, 'icono': icono});
+        .doc(categoria.id)
+        .update(categoria.toMap());
   }
-
-  Future<void> eliminarCategoria(String id) async {
+  Future<void> eliminar(String id) async {
     await _firestore
         .collection('categorias')
         .doc(_uid)

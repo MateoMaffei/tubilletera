@@ -4,7 +4,9 @@ import '../model/gasto.dart';
 
 class GastoServiceFirebase {
   final _firestore = FirebaseFirestore.instance;
-  final _uid = FirebaseAuth.instance.currentUser!.uid;
+  final _auth = FirebaseAuth.instance;
+
+  String get _uid => _auth.currentUser!.uid;
 
   Future<List<Gasto>> obtenerTodos() async {
     final snapshot = await _firestore
@@ -16,7 +18,7 @@ class GastoServiceFirebase {
     return snapshot.docs.map((e) => Gasto.fromMap(e.data())).toList();
   }
 
-  Future<void> crearGasto(Gasto gasto) async {
+  Future<void> crear(Gasto gasto) async {
     await _firestore
         .collection('gastos')
         .doc(_uid)
@@ -25,7 +27,7 @@ class GastoServiceFirebase {
         .set(gasto.toMap());
   }
 
-  Future<void> actualizarGasto(Gasto gasto) async {
+  Future<void> actualizar(Gasto gasto) async {
     await _firestore
         .collection('gastos')
         .doc(_uid)
@@ -34,7 +36,7 @@ class GastoServiceFirebase {
         .update(gasto.toMap());
   }
 
-  Future<void> eliminarGasto(String id) async {
+  Future<void> eliminar(String id) async {
     await _firestore
         .collection('gastos')
         .doc(_uid)
