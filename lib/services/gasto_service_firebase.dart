@@ -1,45 +1,48 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import '../model/gasto.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// class GastoServiceFirebase {
-//   final _firestore = FirebaseFirestore.instance;
-//   final _uid = FirebaseAuth.instance.currentUser!.uid;
+import '../model/gasto.dart';
 
-//   Future<List<Gasto>> obtenerTodos() async {
-//     final snapshot = await _firestore
-//         .collection('gastos')
-//         .doc(_uid)
-//         .collection('items')
-//         .get();
+class GastoServiceFirebase {
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
-//     return snapshot.docs.map((e) => Gasto.fromMap(e.data())).toList();
-//   }
+  String get _uid => _auth.currentUser!.uid;
 
-//   Future<void> crear(Gasto gasto) async {
-//     await _firestore
-//         .collection('gastos')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(gasto.id)
-//         .set(gasto.toMap());
-//   }
+  Future<List<Gasto>> obtenerTodos() async {
+    final snapshot = await _firestore
+        .collection('gastos')
+        .doc(_uid)
+        .collection('items')
+        .get();
 
-//   Future<void> actualizar(Gasto gasto) async {
-//     await _firestore
-//         .collection('gastos')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(gasto.id)
-//         .update(gasto.toMap());
-//   }
+    return snapshot.docs.map((e) => Gasto.fromMap(e.data())).toList();
+  }
 
-//   Future<void> eliminar(String id) async {
-//     await _firestore
-//         .collection('gastos')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(id)
-//         .delete();
-//   }
-// }
+  Future<void> crear(Gasto gasto) async {
+    await _firestore
+        .collection('gastos')
+        .doc(_uid)
+        .collection('items')
+        .doc(gasto.id)
+        .set(gasto.toMap());
+  }
+
+  Future<void> actualizar(Gasto gasto) async {
+    await _firestore
+        .collection('gastos')
+        .doc(_uid)
+        .collection('items')
+        .doc(gasto.id)
+        .update(gasto.toMap());
+  }
+
+  Future<void> eliminar(String id) async {
+    await _firestore
+        .collection('gastos')
+        .doc(_uid)
+        .collection('items')
+        .doc(id)
+        .delete();
+  }
+}
