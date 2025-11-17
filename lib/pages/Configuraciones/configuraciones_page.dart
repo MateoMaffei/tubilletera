@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_multi_formatter/formatters/currency_input_formatter.dart';
 import 'package:flutter_multi_formatter/formatters/money_input_enums.dart';
-import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
 import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/services/auth_services.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 
 class ConfiguracionesPage extends StatefulWidget {
   const ConfiguracionesPage({super.key});
@@ -22,23 +22,23 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
   DateTime? fechaNacimiento;
   bool usarBiometria = false;
 
+  final _authService = AuthService();
+  final _local = UserLocalService();
+
   @override
   void initState() {
     super.initState();
     _cargarDatos();
   }
 
-  void _cargarDatos() {
-    final box = Hive.box('usersBox');
-    final email = box.get('loggedUser');
-    final user = box.get(email);
-
+  Future<void> _cargarDatos() async {
+    final user = _local.getLoggedProfile();
     if (user != null) {
-      emailController.text = email;
+      emailController.text = user['email'] ?? '';
       nombreController.text = user['nombre'] ?? '';
       apellidoController.text = user['apellido'] ?? '';
       final sueldoRaw = user['sueldo'];
-      
+
       if (sueldoRaw != null) {
         sueldoController.text = CurrencyInputFormatter(
           leadingSymbol: '\$ ',
@@ -46,16 +46,17 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
           mantissaLength: 2,
         ).formatEditUpdate(
           const TextEditingValue(),
-          TextEditingValue(text: sueldoRaw.toStringAsFixed(2)),
+          TextEditingValue(text: (sueldoRaw as num).toDouble().toStringAsFixed(2)),
         ).text;
       } else {
         sueldoController.text = '';
       }
-      
+
       usarBiometria = user['biometria'] ?? false;
       if (user['fechaNacimiento'] != null) {
         fechaNacimiento = DateTime.tryParse(user['fechaNacimiento']);
       }
+      setState(() {});
     }
   }
 
@@ -73,15 +74,11 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
   }
 
   void _guardarCambios() async {
-    final box = Hive.box('usersBox');
-    final email = emailController.text.trim();
-
-    // Limpiamos el texto del sueldo
     final sueldoLimpio = sueldoController.text
-        .replaceAll(RegExp(r'[^\d,]'), '') // Eliminamos símbolos, puntos, letras
+        .replaceAll(RegExp(r'[^\d,]'), '')
         .replaceAll(',', '.');
 
-    final sueldoParsed = double.tryParse(sueldoLimpio);
+    final sueldoParsed = sueldoLimpio.isNotEmpty ? double.tryParse(sueldoLimpio) : null;
 
     if (sueldoParsed == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -90,16 +87,15 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
       return;
     }
 
-    await box.put(email, {
-      'nombre': nombreController.text.trim(),
-      'apellido': apellidoController.text.trim(),
-      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
-      'sueldo': sueldoParsed,
-      'password': box.get(email)?['password'],
-      'biometria': usarBiometria,
-    });
+    await _authService.actualizarPerfil(
+      nombre: nombreController.text.trim(),
+      apellido: apellidoController.text.trim(),
+      fechaNacimiento: fechaNacimiento,
+      sueldo: sueldoParsed,
+    );
 
-    await box.put('loggedUser', email);
+    await _authService.actualizarBiometria(usarBiometria);
+    await _authService.obtenerDatosUsuario();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +103,6 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

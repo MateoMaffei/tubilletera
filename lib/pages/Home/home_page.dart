@@ -8,6 +8,7 @@ import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,9 +26,7 @@ class _HomePageState extends State<HomePage> {
     final gastosBox = Hive.box<Gasto>('gastoBox');
     final categoriasBox = Hive.box<Categoria>('categoriasBox');
     final ingresosBox = Hive.box<Ingreso>('ingresoBox');
-    final usersBox = Hive.box('usersBox');
-    final email = usersBox.get('loggedUser');
-    final user = usersBox.get(email);
+    final user = UserLocalService().getLoggedProfile();
     final sueldo = user?['sueldo'] ?? 0.0;
 
     final formatPeso = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
@@ -64,6 +63,22 @@ class _HomePageState extends State<HomePage> {
       ..sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
 
     final porcentaje = (totalGastado / (baseIngresos == 0 ? 1 : baseIngresos)) * 100;
+    final alertas = <String>[];
+
+    if (disponible < 0) {
+      alertas.add('Tus gastos del mes superan tus ingresos disponibles en ${formatPeso.format(disponible.abs())}. Bajá compras discrecionales hasta equilibrar.');
+    } else if (porcentaje > 80) {
+      alertas.add('Llevás usado ${porcentaje.toStringAsFixed(1)}% de tus ingresos: recorta gastos variables antes de fin de mes.');
+    }
+
+    if (gastosPorCategoria.isNotEmpty) {
+      final entry = gastosPorCategoria.entries.reduce((a, b) => a.value >= b.value ? a : b);
+      final descripcion = categorias[entry.key] ?? 'Categoría principal';
+      final share = (entry.value / (totalGastado == 0 ? 1 : totalGastado)) * 100;
+      if (share > 35) {
+        alertas.add('El ${share.toStringAsFixed(1)}% de tus gastos está en "$descripcion". Revisá ahí para liberar presupuesto.');
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text("Inicio")),
@@ -91,6 +106,42 @@ class _HomePageState extends State<HomePage> {
                 label: Text(
                   DateFormat.yMMMM('es_AR').format(selectedMonth),
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Alertas y recomendaciones',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    if (alertas.isEmpty)
+                      const Text('Todo en orden por ahora. Seguimos monitoreando tus gastos.')
+                    else
+                      ...alertas.map(
+                        (msg) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2),
+                                child: Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(msg)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

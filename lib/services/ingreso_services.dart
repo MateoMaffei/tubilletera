@@ -2,10 +2,12 @@ import 'package:collection/collection.dart';
 import 'package:hive/hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:uuid/uuid.dart';
+import 'cloud_sync_service.dart';
 
 class IngresoService {
   final Box<Ingreso> _box = Hive.box<Ingreso>('ingresoBox');
   final _uuid = const Uuid();
+  final _cloud = CloudSyncService();
 
   List<Ingreso> obtenerTodos() {
     return _box.values.toList();
@@ -36,6 +38,7 @@ class IngresoService {
       fechaCreacion: DateTime.now(),
     );
     await _box.add(nuevo);
+    await _cloud.upsertIngreso(nuevo);
   }
 
   Future<void> actualizarIngreso(Ingreso ingreso, {
@@ -49,17 +52,20 @@ class IngresoService {
     ingreso.fechaVencimiento = fechaVencimiento;
     ingreso.estado = estado;
     await ingreso.save();
+    await _cloud.upsertIngreso(ingreso);
   }
 
   Future<void> marcarCobrado(Ingreso ingreso, bool estado) async {
     ingreso.estado = estado;
     await ingreso.save();
+    await _cloud.upsertIngreso(ingreso);
   }
 
   Future<void> eliminarIngreso(String id) async {
     final key = _box.keys.firstWhereOrNull((k) => _box.get(k)?.id == id);
     if (key != null) {
       await _box.delete(key);
+      await _cloud.deleteIngreso(id);
     }
   }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
+import 'package:tubilletera/services/auth_services.dart';
+import 'package:tubilletera/services/migracion_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class RegistrarsePage extends StatefulWidget {
@@ -21,9 +22,10 @@ class _RegistrarsePageState extends State<RegistrarsePage> {
   DateTime? fechaNacimiento;
 
   final _formKey = GlobalKey<FormState>();
+  final _authService = AuthService();
+  final _migracionService = MigracionService();
 
   void register() async {
-    final box = Hive.box('usersBox');
     final email = emailController.text.trim();
     final pass = passController.text.trim();
     final repeat = repeatPassController.text.trim();
@@ -40,25 +42,27 @@ class _RegistrarsePageState extends State<RegistrarsePage> {
       return;
     }
 
-    if (box.containsKey(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("El email ya está registrado")),
+    try {
+      await _authService.registrarUsuario(
+        email: email,
+        password: pass,
+        nombre: nombre,
+        apellido: apellido,
+        fechaNacimiento: fechaNacimiento,
+        sueldo: sueldo,
       );
-      return;
+      await _migracionService.migrarDatos();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registro exitoso")),
+        );
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al registrarse: $e")),
+      );
     }
-
-    await box.put(email, {
-      'password': pass,
-      'nombre': nombre,
-      'apellido': apellido,
-      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
-      'sueldo': sueldo
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registro exitoso")),
-    );
-    Navigator.pushReplacementNamed(context, '/login');
   }
 
   Future<void> pickDate() async {

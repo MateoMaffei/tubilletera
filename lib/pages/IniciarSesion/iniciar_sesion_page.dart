@@ -1,7 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:tubilletera/components/custom_input.dart';
+import 'package:tubilletera/services/auth_services.dart';
+import 'package:tubilletera/services/migracion_service.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class IniciarSesionPage extends StatefulWidget {
@@ -15,6 +18,9 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final LocalAuthentication auth = LocalAuthentication();
+  final _authService = AuthService();
+  final _migracionService = MigracionService();
+  final _local = UserLocalService();
 
   @override
   void initState() {
@@ -23,53 +29,54 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
   }
 
   Future<void> _checkBiometricLogin() async {
-    final box = Hive.box('usersBox');
-    final storedEmail = box.get('loggedUser');
+    final profile = _local.getLoggedProfile();
+    if (profile == null || !(profile['biometria'] ?? false)) return;
 
-    if (storedEmail != null) {
-      final user = box.get(storedEmail);
-      final usarBiometria = user?['biometria'] ?? false;
+    final isAvailable = await auth.canCheckBiometrics;
+    final isSupported = await auth.isDeviceSupported();
 
-      if (!usarBiometria) return;
+    if (isAvailable && isSupported && FirebaseAuth.instance.currentUser != null) {
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Autenticarse con biometría',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
 
-      final isAvailable = await auth.canCheckBiometrics;
-      final isSupported = await auth.isDeviceSupported();
-
-      if (isAvailable && isSupported) {
-        final authenticated = await auth.authenticate(
-          localizedReason: 'Autenticarse con biometría',
-          options: const AuthenticationOptions(biometricOnly: true),
-        );
-
-        if (authenticated) {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
+      if (authenticated && mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
       }
     }
   }
 
-  Future<void> login() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-    final box = Hive.box('usersBox');
-    final user = box.get(email);
-
-    if (user != null && user['password'] == password) {
-      await box.put('loggedUser', email);
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
+  Future<void> _handleLogin(Future<UserCredential> Function() action) async {
+    try {
+      await action();
+      await _migracionService.migrarDatos();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email o contraseña incorrectos")),
+        SnackBar(content: Text('Error al iniciar sesión: $e')),
       );
     }
   }
 
+  Future<void> login() async {
+    await _handleLogin(() => _authService.loginUsuario(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        ));
+  }
+
+  Future<void> loginWithGoogle() async {
+    await _handleLogin(_authService.loginConGoogle);
+  }
+
   Future<void> loginWithBiometrics() async {
-    final box = Hive.box('usersBox');
-    final loggedEmail = box.get('loggedUser');
-    if (loggedEmail == null) {
+    final profile = _local.getLoggedProfile();
+    if (profile == null || FirebaseAuth.instance.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Primero debés iniciar sesión manualmente una vez.")),
+        const SnackBar(content: Text('Primero debés iniciar sesión manualmente una vez.')),
       );
       return;
     }
@@ -87,12 +94,12 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Autenticación fallida")),
+          const SnackBar(content: Text('Autenticación fallida')),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Biometría no disponible en este dispositivo")),
+        const SnackBar(content: Text('Biometría no disponible en este dispositivo')),
       );
     }
   }
@@ -143,6 +150,15 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
                       ElevatedButton(
                         onPressed: login,
                         child: const Text("Ingresar"),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: loginWithGoogle,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                        ),
+                        child: const Text("Ingresar con Google"),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton(

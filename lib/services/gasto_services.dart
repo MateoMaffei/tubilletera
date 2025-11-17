@@ -2,10 +2,12 @@ import 'package:collection/collection.dart';
 import 'package:hive/hive.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:uuid/uuid.dart';
+import 'cloud_sync_service.dart';
 
 class GastoService {
   final Box<Gasto> _box = Hive.box<Gasto>('gastoBox');
   final _uuid = const Uuid();
+  final _cloud = CloudSyncService();
 
   List<Gasto> obtenerTodos() {
     return _box.values.toList();
@@ -47,6 +49,7 @@ class GastoService {
       fechaCreacion: DateTime.now(),
     );
     await _box.add(nuevo);
+    await _cloud.upsertGasto(nuevo);
   }
 
   /// Actualizar un gasto existente
@@ -65,12 +68,14 @@ class GastoService {
     gasto.detalles = detalles;
     gasto.estado = estado;
     await gasto.save();
+    await _cloud.upsertGasto(gasto);
   }
 
-  Future<void> pagarGasto(Gasto gasto) async 
+  Future<void> pagarGasto(Gasto gasto) async
   {
     gasto.estado = true;
     await gasto.save();
+    await _cloud.upsertGasto(gasto);
   }
 
   /// Eliminar gasto por ID
@@ -81,6 +86,7 @@ class GastoService {
     );
     if (key != null) {
       await _box.delete(key);
+      await _cloud.deleteGasto(id);
     }
   }
 

@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:tubilletera/services/auth_services.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class BienvenidaPage extends StatefulWidget {
@@ -13,7 +15,8 @@ class BienvenidaPage extends StatefulWidget {
 class _BienvenidaPageState extends State<BienvenidaPage> {
   final LocalAuthentication auth = LocalAuthentication();
   String? loggedName;
-
+  final _authService = AuthService();
+  final _local = UserLocalService();
 
   @override
   void initState() {
@@ -23,21 +26,18 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
   }
 
   void _loadUser() {
-    final box = Hive.box('usersBox');
-    final email = box.get('loggedUser');
-    if (email != null) {
-      final user = box.get(email);
+    final user = _local.getLoggedProfile();
+    if (user != null) {
       setState(() {
-        loggedName = user?['nombre'];
+        loggedName = user['nombre'];
       });
     }
   }
 
   Future<void> _verificarUsuarioLogueado() async {
-    final box = Hive.box('usersBox');
-    final loggedEmail = box.get('loggedUser');
+    final loggedId = _local.loggedUserId;
 
-    if (loggedEmail != null) {
+    if (loggedId != null && FirebaseAuth.instance.currentUser != null) {
       final isAvailable = await auth.canCheckBiometrics;
       final isSupported = await auth.isDeviceSupported();
 
@@ -94,8 +94,7 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
-                    // Elimina sesión actual y va a login
-                    Hive.box('usersBox').delete('loggedUser');
+                    _authService.logout();
                     Navigator.pushReplacementNamed(context, '/login');
                   },
                   child: Text("No soy $loggedName"),

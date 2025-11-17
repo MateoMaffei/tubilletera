@@ -1,7 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:tubilletera/firebase_options.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
@@ -15,10 +17,14 @@ import 'package:tubilletera/pages/Ingresos/ingresos_page.dart';
 import 'package:tubilletera/pages/Registrarse/registrarse_page.dart';
 import 'package:tubilletera/pages/Splash/splash_page.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 import 'package:tubilletera/theme/app_theme.dart';
 
 void main() async {  
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   await Hive.initFlutter();
   await Hive.openBox('usersBox');
@@ -39,11 +45,8 @@ void main() async {
 }
 
 Future<void> _asegurarSueldoInicial() async {
-  final usersBox = Hive.box('usersBox');
-  final email = usersBox.get('loggedUser');
-  if (email == null) return;
-
-  final user = usersBox.get(email);
+  final userLocal = UserLocalService();
+  final user = userLocal.getLoggedProfile();
   final sueldo = (user?['sueldo'] as num?)?.toDouble();
   if (sueldo == null) return;
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
+import 'package:tubilletera/services/user_local_service.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 import 'ingresos_form_page.dart';
@@ -28,11 +28,7 @@ class _IngresosPageState extends State<IngresosPage> {
   }
 
   Future<void> _generarIngresosSueldo() async {
-    final usersBox = Hive.box('usersBox');
-    final email = usersBox.get('loggedUser');
-    if (email == null) return;
-
-    final user = usersBox.get(email);
+    final user = UserLocalService().getLoggedProfile();
     final sueldo = (user?['sueldo'] as num?)?.toDouble();
     if (sueldo == null) return;
 

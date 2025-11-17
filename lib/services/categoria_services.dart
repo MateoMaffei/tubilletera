@@ -2,10 +2,12 @@ import 'package:collection/collection.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../model/categoria_hive.dart';
+import 'cloud_sync_service.dart';
 
 class CategoriaService {
   final Box<Categoria> _box = Hive.box<Categoria>('categoriasBox');
   final _uuid = const Uuid();
+  final _cloud = CloudSyncService();
 
   /// Obtener todas las categorías
   List<Categoria> obtenerTodas() {
@@ -26,6 +28,7 @@ class CategoriaService {
       icono: icono,
     );
     await _box.add(nuevaCategoria);
+    await _cloud.upsertCategoria(nuevaCategoria);
   }
 
   /// Actualizar una categoría existente
@@ -35,6 +38,7 @@ class CategoriaService {
       categoria.descripcion = nuevaDescripcion;
       categoria.icono = nuevoIcono;
       await categoria.save();
+      await _cloud.upsertCategoria(categoria);
     }
   }
 
@@ -46,6 +50,7 @@ class CategoriaService {
     );
     if (key != null) {
       await _box.delete(key);
+      await _cloud.deleteCategoria(id);
     }
   }
 }

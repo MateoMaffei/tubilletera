@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:tubilletera/services/auth_services.dart';
 
 class MainDrawer extends StatelessWidget {
   final String currentRoute;
+  final _authService = AuthService();
 
   const MainDrawer({super.key, required this.currentRoute});
 
@@ -44,8 +45,7 @@ class MainDrawer extends StatelessWidget {
                 ),
               ),
               onTap: () async {
-                final box = Hive.box('usersBox');
-                await box.delete('loggedUser');
+                await _authService.logout();
                 Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
               },
             ),
