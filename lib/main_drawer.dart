@@ -24,6 +24,7 @@ class MainDrawer extends StatelessWidget {
             // Parte superior del menú
             _buildItem(context, Icons.home, 'Inicio', '/home'),
             _buildItem(context, Icons.list, 'Gastos', '/gastos'),
+            _buildItem(context, Icons.attach_money, 'Ingresos', '/ingresos'),
             _buildItem(context, Icons.category, 'Categorías', '/categorias'),
 
             const Spacer(), // empuja lo de abajo
