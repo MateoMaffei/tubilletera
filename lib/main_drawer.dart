@@ -22,10 +22,10 @@ class MainDrawer extends StatelessWidget {
             ),
 
             // Parte superior del menú
-            _buildItem(context, Icons.home, 'Inicio', '/home'),
-            _buildItem(context, Icons.list, 'Gastos', '/gastos'),
-            _buildItem(context, Icons.attach_money, 'Ingresos', '/ingresos'),
-            _buildItem(context, Icons.category, 'Categorías', '/categorias'),
+            _buildItem(context, Icons.home_outlined, 'Inicio', '/home'),
+            _buildItem(context, Icons.receipt_long_outlined, 'Gastos', '/gastos'),
+            _buildItem(context, Icons.attach_money_outlined, 'Ingresos', '/ingresos'),
+            _buildItem(context, Icons.category_outlined, 'Categorías', '/categorias'),
 
             const Spacer(), // empuja lo de abajo
 
@@ -56,10 +56,21 @@ class MainDrawer extends StatelessWidget {
   }
 
   Widget _buildItem(BuildContext context, IconData icon, String title, String route) {
+    final selected = currentRoute == route;
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      selected: currentRoute == route,
+      leading: Icon(
+        icon,
+        color: selected ? Theme.of(context).primaryColor : Colors.black54,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: selected ? Theme.of(context).primaryColor : Colors.black87,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+      selected: selected,
+      selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.08),
       onTap: () {
         if (currentRoute != route) {
           Navigator.pushReplacementNamed(context, route);
