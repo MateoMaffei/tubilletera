@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:tubilletera/components/custom_input.dart';
 import 'package:tubilletera/services/auth_services.dart';
@@ -54,6 +55,20 @@ class _IniciarSesionPageState extends State<IniciarSesionPage> {
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
+    } on FirebaseAuthException catch (e) {
+      final friendlyMessage = e.code == 'sign_in_failed'
+          ? 'No se pudo completar el inicio con Google. Asegurate de tener Google Play Services actualizado y de que la app tenga configurada la huella SHA-1 en Firebase.'
+          : e.message ?? 'Error al iniciar sesión';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyMessage)),
+      );
+    } on PlatformException catch (e) {
+      final friendlyMessage = e.code == '10'
+          ? 'Falló Google Sign-In (código 10). Agregá la huella SHA-1 de la clave de debug/release en Firebase y descargá de nuevo google-services.json.'
+          : e.message ?? 'Error al iniciar sesión';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyMessage)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al iniciar sesión: $e')),

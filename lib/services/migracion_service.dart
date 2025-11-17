@@ -27,7 +27,7 @@ class MigracionService {
         'id': categoria.id,
         'descripcion': categoria.descripcion,
         'icono': categoria.icono,
-      });
+      }, SetOptions(merge: true));
     }
 
     for (final gasto in gastosBox.values) {
@@ -45,7 +45,7 @@ class MigracionService {
         'detalles': gasto.detalles,
         'estado': gasto.estado,
         'fechaCreacion': gasto.fechaCreacion.toIso8601String(),
-      });
+      }, SetOptions(merge: true));
     }
 
     for (final ingreso in ingresosBox.values) {
@@ -61,7 +61,7 @@ class MigracionService {
         'fechaVencimiento': ingreso.fechaVencimiento.toIso8601String(),
         'estado': ingreso.estado,
         'fechaCreacion': ingreso.fechaCreacion.toIso8601String(),
-      });
+      }, SetOptions(merge: true));
     }
 
     if (eliminarLocales) {

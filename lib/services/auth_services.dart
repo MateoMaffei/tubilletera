@@ -48,16 +48,23 @@ class AuthService {
   }
 
   Future<UserCredential> loginConGoogle() async {
-    final googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) {
-      throw Exception('Inicio con Google cancelado');
+    UserCredential userCredential;
+    try {
+      // Intenta el flujo nativo recomendado por Firebase Auth
+      userCredential = await _auth.signInWithProvider(GoogleAuthProvider());
+    } catch (_) {
+      // Fallback al plugin de GoogleSignIn para dispositivos que aún no soportan el nuevo flujo
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        throw Exception('Inicio con Google cancelado');
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      userCredential = await _auth.signInWithCredential(credential);
     }
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    final userCredential = await _auth.signInWithCredential(credential);
 
     final doc = _db.collection('usuarios').doc(userCredential.user!.uid);
     final snapshot = await doc.get();
