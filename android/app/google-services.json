@@ -12,7 +12,12 @@
           "package_name": "com.example.tubilletera"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "208449690786-6c4e848ef1681707ab4bfb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDHwtj8wFeadaaaYGO6VY-B8AK_NB1FpG4"

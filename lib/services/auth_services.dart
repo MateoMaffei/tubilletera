@@ -16,35 +16,43 @@ class AuthService {
     required DateTime? fechaNacimiento,
     double? sueldo,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    await _db.collection('usuarios').doc(credential.user!.uid).set({
-      'email': email,
-      'nombre': nombre,
-      'apellido': apellido,
-      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
-      'sueldo': sueldo,
-      'biometria': false,
-      'creado': FieldValue.serverTimestamp(),
-    });
+      await _db.collection('usuarios').doc(credential.user!.uid).set({
+        'email': email,
+        'nombre': nombre,
+        'apellido': apellido,
+        'fechaNacimiento': fechaNacimiento?.toIso8601String(),
+        'sueldo': sueldo,
+        'biometria': false,
+        'creado': FieldValue.serverTimestamp(),
+      });
 
-    await _guardarPerfilLocal(credential.user!.uid);
-    return credential;
+      await _guardarPerfilLocal(credential.user!.uid);
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
+    }
   }
 
   Future<UserCredential> loginUsuario({
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    await _guardarPerfilLocal(credential.user!.uid);
-    return credential;
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      await _guardarPerfilLocal(credential.user!.uid);
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
+    }
   }
 
   Future<UserCredential> loginConGoogle() async {
@@ -52,6 +60,8 @@ class AuthService {
     try {
       // Intenta el flujo nativo recomendado por Firebase Auth
       userCredential = await _auth.signInWithProvider(GoogleAuthProvider());
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
     } catch (_) {
       // Fallback al plugin de GoogleSignIn para dispositivos que aún no soportan el nuevo flujo
       final googleUser = await GoogleSignIn().signIn();
@@ -170,6 +180,14 @@ class AuthService {
     final data = await obtenerDatosUsuario(uid: uid) ?? {};
     data['biometria'] = valor;
     await _local.saveProfile(uid, data);
+  }
+
+  Exception _mapFirebaseAuthException(FirebaseAuthException e) {
+    final message = e.code == 'missing-config' ||
+            (e.message != null && e.message!.contains('CONFIGURATION_NOT_FOUND'))
+        ? 'Firebase no recibió la configuración completa (CONFIGURATION_NOT_FOUND). Volvé a instalar la app con el google-services.json correcto o añadí el SHA-1/SHA-256 del dispositivo en la consola de Firebase.'
+        : e.message ?? 'Error de autenticación';
+    return Exception(message);
   }
 
   Future<void> actualizarPerfil({
