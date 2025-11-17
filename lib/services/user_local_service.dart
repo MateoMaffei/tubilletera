@@ -14,6 +14,21 @@ class UserLocalService {
     return null;
   }
 
+  /// Busca en Hive un usuario legado que haya guardado email y password en local.
+  ///
+  /// Devuelve el primer mapa que contenga ambas claves, o `null` si no existe.
+  Map<String, dynamic>? findLegacyCredentials() {
+    for (final entry in _box.values) {
+      if (entry is Map) {
+        final map = Map<String, dynamic>.from(entry);
+        if (map['email'] is String && map['password'] is String) {
+          return map;
+        }
+      }
+    }
+    return null;
+  }
+
   Future<void> saveProfile(String uid, Map<String, dynamic> data) async {
     await _box.put(uid, Map<String, dynamic>.from(data));
     await _box.put('loggedUser', uid);

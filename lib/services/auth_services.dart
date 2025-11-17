@@ -84,6 +84,65 @@ class AuthService {
     return userCredential;
   }
 
+  /// Intenta descubrir credenciales guardadas en Hive de una versión local previa
+  /// y crea/inicia sesión en Firebase con ellas, dejando la biometría activada.
+  Future<bool> recuperarUsuarioLocalConBiometria() async {
+    final legacy = _local.findLegacyCredentials();
+    final email = legacy?['email'] as String?;
+    final password = legacy?['password'] as String?;
+
+    if (email == null || password == null) return false;
+
+    final nombre = (legacy?['nombre'] as String?) ?? '';
+    final apellido = (legacy?['apellido'] as String?) ?? '';
+    final sueldo = (legacy?['sueldo'] as num?)?.toDouble();
+
+    DateTime? fechaNacimiento;
+    final fechaRaw = legacy?['fechaNacimiento'];
+    if (fechaRaw is String) {
+      fechaNacimiento = DateTime.tryParse(fechaRaw);
+    } else if (fechaRaw is DateTime) {
+      fechaNacimiento = fechaRaw;
+    }
+
+    UserCredential credential;
+    try {
+      credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        credential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } else {
+        return false;
+      }
+    }
+
+    final baseData = {
+      'email': email,
+      'nombre': nombre,
+      'apellido': apellido,
+      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
+      'sueldo': sueldo,
+      'biometria': true,
+    };
+
+    await _db
+        .collection('usuarios')
+        .doc(credential.user!.uid)
+        .set({
+      ...baseData,
+      'creado': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await _local.saveProfile(credential.user!.uid, baseData);
+    return true;
+  }
+
   Future<void> logout() async {
     await _auth.signOut();
     await _local.clearSession();
