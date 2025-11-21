@@ -174,6 +174,8 @@ class _HomePageState extends State<HomePage> {
                         color: disponible >= 0 ? Colors.green : Colors.red),
                     const Divider(),
                     _infoRow("🔴 Resta pagar", formatPeso.format(restantePagar), color: Colors.orange),
+                    const Divider(),
+                    _infoRow("🤝 Adeudado por terceros", formatPeso.format(totalTercerosPendiente), color: Colors.blue),
                   ],
                 ),
               ),

@@ -1,46 +1,57 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import '../model/categoria.dart';
-// import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
-// class CategoriaServiceFirebase {
-//   final _firestore = FirebaseFirestore.instance;
-//   final _uid = FirebaseAuth.instance.currentUser!.uid;
+import '../model/categoria.dart';
 
-//   Future<List<Categoria>> obtenerTodas() async {
-//     final snapshot = await _firestore
-//         .collection('categorias')
-//         .doc(_uid)
-//         .collection('items')
-//         .get();
+class CategoriaServiceFirebase {
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+  final _uuid = const Uuid();
 
-//     return snapshot.docs.map((e) => Categoria.fromMap(e.data())).toList();
-//   }
+  String get _uid => _auth.currentUser!.uid;
 
-//   Future<void> crear(Categoria categoria) async {
-//     await _firestore
-//         .collection('categorias')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(categoria.id)
-//         .set(categoria.toMap());
-//   }
+  Future<List<Categoria>> obtenerTodas() async {
+    final snapshot = await _firestore
+        .collection('categorias')
+        .doc(_uid)
+        .collection('items')
+        .get();
 
-//   Future<void> actualizar(Categoria categoria) async {
-//     await _firestore
-//         .collection('categorias')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(categoria.id)
-//         .update(categoria.toMap());
-//   }
+    return snapshot.docs.map((e) => Categoria.fromMap(e.data())).toList();
+  }
 
-//   Future<void> eliminar(String id) async {
-//     await _firestore
-//         .collection('categorias')
-//         .doc(_uid)
-//         .collection('items')
-//         .doc(id)
-//         .delete();
-//   }
-// }
+  Future<void> crearCategoria(String descripcion, String icono) async {
+    final categoria = Categoria.crearNueva(_uuid.v4(), descripcion, icono);
+    await _firestore
+        .collection('categorias')
+        .doc(_uid)
+        .collection('items')
+        .doc(categoria.id)
+        .set(categoria.toMap());
+  }
+
+  Future<void> actualizarCategoria(
+      String id, String descripcion, String icono) async {
+    final categoria = Categoria(
+      id: id,
+      descripcion: descripcion,
+      icono: icono,
+    );
+    await _firestore
+        .collection('categorias')
+        .doc(_uid)
+        .collection('items')
+        .doc(id)
+        .update(categoria.toMap());
+  }
+
+  Future<void> eliminarCategoria(String id) async {
+    await _firestore
+        .collection('categorias')
+        .doc(_uid)
+        .collection('items')
+        .doc(id)
+        .delete();
+  }
+}

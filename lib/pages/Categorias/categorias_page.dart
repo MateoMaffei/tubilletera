@@ -1,11 +1,8 @@
-// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tubilletera/helpers/iconos_disponibles.dart';
 import 'package:tubilletera/main_drawer.dart';
-import 'package:tubilletera/model/categoria_hive.dart';
+import 'package:tubilletera/model/categoria.dart';
 import 'package:tubilletera/services/categoria_service_firebase.dart';
-import 'package:tubilletera/services/categoria_services.dart';
-import 'package:uuid/uuid.dart';
 
 class CategoriasPage extends StatefulWidget {
   const CategoriasPage({super.key});
@@ -15,9 +12,7 @@ class CategoriasPage extends StatefulWidget {
 }
 
 class _CategoriasPageState extends State<CategoriasPage> {
-  // final categoriaService = CategoriaServiceFirebase();
-  final categoriaService = CategoriaService();
-  final _uuid = const Uuid();
+  final categoriaService = CategoriaServiceFirebase();
 
   void _mostrarDialogoCategoria({Categoria? categoriaExistente}) {
     final descripcionController = TextEditingController(
@@ -97,12 +92,10 @@ class _CategoriasPageState extends State<CategoriasPage> {
                       await categoriaService.crearCategoria(
                           desc,
                           iconoSeleccionado,
-                          _uuid.v4().toString()
                           );
                     } else {
                       await categoriaService.actualizarCategoria(
                           categoriaExistente.id,desc,iconoSeleccionado,
-                          // idUsuario: FirebaseAuth.instance.currentUser!.uid
                       );
                     }
 
@@ -145,46 +138,52 @@ class _CategoriasPageState extends State<CategoriasPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categorias = categoriaService.obtenerTodas();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Categorías')),
-      drawer: const MainDrawer(currentRoute: '/categorias'),
-      body: categorias.isEmpty
-          ? const Center(child: Text('No hay categorías aún'))
-          : ListView.builder(
-              itemCount: categorias.length,
-              itemBuilder: (_, index) {
-                final categoria = categorias[index];
-
-                return ListTile(
-                  leading: Icon(
-                    IconHelper.iconList[categoria.icono] ?? Icons.help_outline,
-                    color: Colors.green,
-                  ),
-                  title: Text(categoria.descripcion),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _mostrarDialogoCategoria(
-                          categoriaExistente: categoria,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _confirmarEliminar(categoria),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _mostrarDialogoCategoria(),
-        child: const Icon(Icons.add),
-      ),
+    return FutureBuilder<List<Categoria>>(
+      future: categoriaService.obtenerTodas(),
+      builder: (context, snapshot) {
+        final categorias = snapshot.data ?? [];
+        return Scaffold(
+          appBar: AppBar(title: const Text('Categorías')),
+          drawer: const MainDrawer(currentRoute: '/categorias'),
+          body: snapshot.connectionState == ConnectionState.waiting
+              ? const Center(child: CircularProgressIndicator())
+              : categorias.isEmpty
+                  ? const Center(child: Text('No hay categorías aún'))
+                  : ListView.builder(
+                      itemCount: categorias.length,
+                      itemBuilder: (_, index) {
+                        final categoria = categorias[index];
+                        return ListTile(
+                          leading: Icon(
+                            IconHelper.iconList[categoria.icono] ??
+                                Icons.help_outline,
+                            color: Colors.green,
+                          ),
+                          title: Text(categoria.descripcion),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => _mostrarDialogoCategoria(
+                                  categoriaExistente: categoria,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () => _confirmarEliminar(categoria),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _mostrarDialogoCategoria(),
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 }

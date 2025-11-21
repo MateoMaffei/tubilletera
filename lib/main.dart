@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
@@ -9,6 +10,7 @@ import 'package:tubilletera/pages/Bienvenida/bienvenida_page.dart';
 import 'package:tubilletera/pages/Categorias/categorias_page.dart';
 import 'package:tubilletera/pages/Configuraciones/configuraciones_page.dart';
 import 'package:tubilletera/pages/Gastos/gastos_page.dart';
+import 'package:tubilletera/pages/GastosTerceros/gastos_terceros_page.dart';
 import 'package:tubilletera/pages/Home/home_page.dart';
 import 'package:tubilletera/pages/IniciarSesion/iniciar_sesion_page.dart';
 import 'package:tubilletera/pages/Ingresos/ingresos_page.dart';
@@ -16,9 +18,14 @@ import 'package:tubilletera/pages/Registrarse/registrarse_page.dart';
 import 'package:tubilletera/pages/Splash/splash_page.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
 import 'package:tubilletera/theme/app_theme.dart';
+import 'firebase_options.dart';
 
-void main() async {  
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   await Hive.initFlutter();
   await Hive.openBox('usersBox');
@@ -78,6 +85,7 @@ class MyApp extends StatelessWidget {
           '/home': (context) => const HomePage(),
           '/ingresos': (context) => const IngresosPage(),
           '/gastos': (context) => const GastosPage(),
+          '/gastos_terceros': (context) => const GastosTercerosPage(),
           '/categorias': (context) => const CategoriasPage(),
           '/configuraciones': (context) => const ConfiguracionesPage(),
         },

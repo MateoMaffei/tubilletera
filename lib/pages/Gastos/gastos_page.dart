@@ -1,14 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/helpers/iconos_disponibles.dart';
 import 'package:tubilletera/main_drawer.dart';
-import 'package:tubilletera/model/categoria_hive.dart';
-import 'package:tubilletera/model/gasto_hive.dart';
+import 'package:tubilletera/model/categoria.dart';
+import 'package:tubilletera/model/gasto.dart';
 import 'package:tubilletera/pages/Gastos/gasto_form_page.dart';
-import 'package:tubilletera/services/categoria_services.dart';
-import 'package:tubilletera/services/gasto_services.dart';
+import 'package:tubilletera/services/categoria_service_firebase.dart';
+import 'package:tubilletera/services/gasto_service_firebase.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class GastosPage extends StatefulWidget {
@@ -19,10 +20,10 @@ class GastosPage extends StatefulWidget {
 }
 
 class _GastosPageState extends State<GastosPage> {
-  final gastoService = GastoService();
-  final categoriaService = CategoriaService();
+  final gastoService = GastoServiceFirebase();
+  final categoriaService = CategoriaServiceFirebase();
 
-  late List<Categoria> categorias;
+  List<Categoria> categorias = [];
 
 
   DateTime selectedDate = DateTime.now();
@@ -40,27 +41,38 @@ class _GastosPageState extends State<GastosPage> {
     symbol: '',
     decimalDigits: 2);
 
-  List<Gasto> _filtrarGastos() {
-    final gastos = gastoService.obtenerTodos();
+  Stream<List<Gasto>> _filtrarGastos() {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final inicioMes = DateTime(selectedDate.year, selectedDate.month, 1);
+    final finMes = DateTime(selectedDate.year, selectedDate.month + 1, 1);
 
-    final filtrados = gastos.where((gasto) {
-      final mismoMes = gasto.fechaVencimiento.month == selectedDate.month &&
-          gasto.fechaVencimiento.year == selectedDate.year;
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('gastos')
+        .doc(uid)
+        .collection('items')
+        .where('fechaVencimiento',
+            isGreaterThanOrEqualTo: inicioMes.toIso8601String())
+        .where('fechaVencimiento',
+            isLessThan: finMes.toIso8601String());
 
-      final coincideCategoria = categoriaSeleccionada == null || gasto.idCategoria == categoriaSeleccionada;
-      final coincideEstado = estadoSeleccionado == null || gasto.estado == estadoSeleccionado;
+    if (categoriaSeleccionada != null) {
+      query = query.where('idCategoria', isEqualTo: categoriaSeleccionada);
+    }
+    if (estadoSeleccionado != null) {
+      query = query.where('estado', isEqualTo: estadoSeleccionado);
+    }
 
-      return mismoMes && coincideCategoria && coincideEstado;
-    }).toList();
-
-    filtrados.sort((a, b) {
-      if (a.estado != b.estado) {
-        return a.estado ? 1 : -1;
-      }
-      return a.fechaVencimiento.compareTo(b.fechaVencimiento);
+    return query.snapshots().map((snapshot) {
+      final gastos =
+          snapshot.docs.map((e) => Gasto.fromMap(e.data())).toList();
+      gastos.sort((a, b) {
+        if (a.estado != b.estado) {
+          return a.estado ? 1 : -1;
+        }
+        return a.fechaVencimiento.compareTo(b.fechaVencimiento);
+      });
+      return gastos;
     });
-
-    return filtrados;
   }
 
   void _confirmarCambioEstado(Gasto gasto) {
@@ -78,13 +90,10 @@ class _GastosPageState extends State<GastosPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              gasto.estado = !gasto.estado;
-              await gasto.save();
+              final actualizado = gasto.copyWith(estado: !gasto.estado);
+              await gastoService.actualizar(actualizado);
               if (mounted) Navigator.pop(context);
-              setState(() {
-                gasto.estado = true;
-                gastoService.pagarGasto(gasto);
-              });
+              if (mounted) setState(() {});
             },
             child: const Text('Confirmar'),
           ),
@@ -106,13 +115,9 @@ class _GastosPageState extends State<GastosPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final box = Hive.box<Gasto>('gastoBox');
-              final key = box.keys.firstWhere(
-                (k) => box.get(k)?.id == gasto.id,
-              );
-              await box.delete(key);
+              await gastoService.eliminar(gasto.id);
               if (mounted) Navigator.pop(context);
-              setState(() {});
+              if (mounted) setState(() {});
             },
             child: const Text('Eliminar'),
           ),
@@ -141,24 +146,17 @@ class _GastosPageState extends State<GastosPage> {
                 gasto.fechaVencimiento.month + 1,
                 gasto.fechaVencimiento.day,
               );
-
-              final copia = Gasto(
-                id: DateTime.now().millisecondsSinceEpoch
-                    .toString(), // o con UUID
-                descripcion: gasto.descripcion,
-                idCategoria: gasto.idCategoria,
-                monto: gasto.monto,
+              final copia = gasto.copyWith(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
                 fechaVencimiento: nuevoMes,
-                detalles: gasto.detalles,
-                estado: false, // nueva copia es pendiente
+                estado: false,
                 fechaCreacion: DateTime.now(),
               );
 
-              final box = Hive.box<Gasto>('gastoBox');
-              await box.add(copia);
+              await gastoService.crear(copia);
 
               if (mounted) Navigator.pop(context);
-              setState(() {});
+              if (mounted) setState(() {});
             },
             child: const Text('Duplicar'),
           ),
@@ -420,8 +418,7 @@ class _GastosPageState extends State<GastosPage> {
     );
   }
 
-  List<Gasto> _gastosPendientes() {
-    final todos = _filtrarGastos();
+  List<Gasto> _gastosPendientes(List<Gasto> todos) {
     final pendientes = todos
         .where((g) => !g.estado)
         .toList()
@@ -429,8 +426,7 @@ class _GastosPageState extends State<GastosPage> {
     return pendientes;
   }
 
-  List<Gasto> _gastosAbonados() {
-    final todos = _filtrarGastos();
+  List<Gasto> _gastosAbonados(List<Gasto> todos) {
     final abonados = todos
         .where((g) => g.estado)
         .toList()
@@ -452,7 +448,12 @@ class _GastosPageState extends State<GastosPage> {
     tempDate = selectedDate;
     tempCategoria = categoriaSeleccionada;
     tempEstado = estadoSeleccionado;
-    categorias = categoriaService.obtenerTodas();
+    _cargarCategorias();
+  }
+
+  Future<void> _cargarCategorias() async {
+    categorias = await categoriaService.obtenerTodas();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -554,40 +555,51 @@ class _GastosPageState extends State<GastosPage> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ListView(
-              children: [
-                ..._gastosPendientes().map((gasto) {
-                  final categoria = _buscarCategoria(gasto.idCategoria);
-                  return _buildGastoCard(gasto, categoria);
-                }),
-
-                if (_gastosAbonados().isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: const [
-                        Expanded(child: Divider()),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            'Abonados',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+            child: StreamBuilder<List<Gasto>>(
+              stream: _filtrarGastos(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final gastos = snapshot.data ?? [];
+                final pendientes = _gastosPendientes(gastos);
+                final abonados = _gastosAbonados(gastos);
+                return ListView(
+                  children: [
+                    ...pendientes.map((gasto) {
+                      final categoria = _buscarCategoria(gasto.idCategoria);
+                      return _buildGastoCard(gasto, categoria);
+                    }),
+                    if (abonados.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: const [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                'Abonados',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
-                          ),
+                            Expanded(child: Divider()),
+                          ],
                         ),
-                        Expanded(child: Divider()),
-                      ],
-                    ),
-                  ),
-                  ..._gastosAbonados().map((gasto) {
-                    final categoria = _buscarCategoria(gasto.idCategoria);
-                    return _buildGastoCard(gasto, categoria);
-                  }),
-                ],
-              ],
+                      ),
+                      ...abonados.map((gasto) {
+                        final categoria = _buscarCategoria(gasto.idCategoria);
+                        return _buildGastoCard(gasto, categoria);
+                      }),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
 
