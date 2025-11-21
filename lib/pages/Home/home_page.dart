@@ -7,8 +7,7 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
-import 'package:tubilletera/model/gasto_tercero_hive.dart';
-import 'package:tubilletera/services/gasto_tercero_service.dart';
+import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,7 +24,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final gastosBox = Hive.box<Gasto>('gastoBox');
     final categoriasBox = Hive.box<Categoria>('categoriasBox');
-    final tercerosService = GastoTerceroService();
+    final ingresosBox = Hive.box<Ingreso>('ingresoBox');
     final usersBox = Hive.box('usersBox');
     final email = usersBox.get('loggedUser');
     final user = usersBox.get(email);
@@ -37,19 +36,17 @@ class _HomePageState extends State<HomePage> {
       g.fechaVencimiento.month == selectedMonth.month &&
       g.fechaVencimiento.year == selectedMonth.year).toList();
 
-    final List<CuotaTercero> cuotasTerceros = tercerosService.cuotasDelMes(selectedMonth.year, selectedMonth.month);
+    final ingresosDelMes = ingresosBox.values.where((ing) =>
+      ing.fechaVencimiento.month == selectedMonth.month &&
+      ing.fechaVencimiento.year == selectedMonth.year).toList();
 
-    final totalGastosPropios = todosLosGastos.fold<double>(0.0, (sum, g) => sum + g.monto);
-    final totalPropiosPagado = todosLosGastos.where((g) => g.estado).fold<double>(0.0, (sum, g) => sum + g.monto);
-
-    final totalTerceros = cuotasTerceros.fold<double>(0.0, (sum, c) => sum + c.monto);
-    final totalTercerosPagado = cuotasTerceros.where((c) => c.pagada).fold<double>(0.0, (sum, c) => sum + c.monto);
-    final totalTercerosPendiente = totalTerceros - totalTercerosPagado;
-
-    final totalGastado = totalGastosPropios + totalTerceros;
-    final totalPagado = totalPropiosPagado + totalTercerosPagado;
+    final totalGastado = todosLosGastos.fold<double>(0.0, (sum, g) => sum + g.monto);
+    final totalPagado = todosLosGastos.where((g) => g.estado).fold<double>(0.0, (sum, g) => sum + g.monto);
     final restantePagar = totalGastado - totalPagado;
-    final disponible = sueldo - totalGastado;
+    final totalIngresos = ingresosDelMes.fold<double>(0.0, (sum, ing) => sum + ing.monto);
+    final cobrados = ingresosDelMes.where((ing) => ing.estado).fold<double>(0.0, (sum, ing) => sum + ing.monto);
+    final baseIngresos = totalIngresos > 0 ? totalIngresos : sueldo;
+    final disponible = baseIngresos - totalGastado;
 
     final gastosPorCategoria = <String, double>{};
     for (final gasto in todosLosGastos) {
@@ -66,7 +63,7 @@ class _HomePageState extends State<HomePage> {
         .toList()
       ..sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
 
-    final porcentaje = (totalGastado / (sueldo == 0 ? 1 : sueldo)) * 100;
+    final porcentaje = (totalGastado / (baseIngresos == 0 ? 1 : baseIngresos)) * 100;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Inicio")),
@@ -165,14 +162,16 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    _infoRow("💰 Sueldo mensual", formatPeso.format(sueldo)),
+                    _infoRow("💰 Ingresos del mes", formatPeso.format(totalIngresos > 0 ? totalIngresos : sueldo)),
+                    const Divider(),
+                    _infoRow("✅ Cobrado", formatPeso.format(cobrados), color: Colors.green),
+                    const Divider(),
+                    _infoRow("⏳ Pendiente", formatPeso.format((totalIngresos - cobrados).clamp(0, double.infinity)), color: Colors.orange),
                     const Divider(),
                     _infoRow("💸 Gastado", formatPeso.format(totalGastado)),
                     const Divider(),
                     _infoRow("📉 Disponible", formatPeso.format(disponible),
                         color: disponible >= 0 ? Colors.green : Colors.red),
-                    const Divider(),
-                    _infoRow("✅ Pagado", formatPeso.format(totalPagado), color: Colors.green),
                     const Divider(),
                     _infoRow("🔴 Resta pagar", formatPeso.format(restantePagar), color: Colors.orange),
                     const Divider(),
