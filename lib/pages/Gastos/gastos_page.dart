@@ -31,6 +31,9 @@ class _GastosPageState extends State<GastosPage> {
 
   bool mostrarFiltros = false;
 
+  bool modoSeleccion = false;
+  final Set<String> gastosSeleccionados = {};
+
   DateTime tempDate = DateTime.now();
   String? tempCategoria;
   bool? tempEstado;
@@ -39,6 +42,13 @@ class _GastosPageState extends State<GastosPage> {
     locale: 'es_AR',
     symbol: '',
     decimalDigits: 2);
+
+  double get _totalSeleccionado {
+    final gastos = gastoService.obtenerTodos();
+    return gastos
+        .where((gasto) => gastosSeleccionados.contains(gasto.id))
+        .fold(0, (total, gasto) => total + gasto.monto);
+  }
 
   List<Gasto> _filtrarGastos() {
     final gastos = gastoService.obtenerTodos();
@@ -167,6 +177,35 @@ class _GastosPageState extends State<GastosPage> {
     );
   }
 
+  void _activarSeleccion(Gasto gasto) {
+    setState(() {
+      modoSeleccion = true;
+      gastosSeleccionados.add(gasto.id);
+    });
+  }
+
+  void _toggleSeleccion(Gasto gasto) {
+    if (!modoSeleccion) return;
+
+    setState(() {
+      if (gastosSeleccionados.contains(gasto.id)) {
+        gastosSeleccionados.remove(gasto.id);
+        if (gastosSeleccionados.isEmpty) {
+          modoSeleccion = false;
+        }
+      } else {
+        gastosSeleccionados.add(gasto.id);
+      }
+    });
+  }
+
+  void _salirModoSeleccion() {
+    setState(() {
+      modoSeleccion = false;
+      gastosSeleccionados.clear();
+    });
+  }
+
   Widget _buildGastoCard(Gasto gasto, Categoria categoria) {
     final ahora = DateTime.now();
     final diasRestantes = gasto.fechaVencimiento.difference(ahora).inDays;
@@ -200,28 +239,46 @@ class _GastosPageState extends State<GastosPage> {
         : diasRestantes <= 5
         ? AppColors.porVencerText
         : AppColors.pendienteText;
+    final estaSeleccionado = gastosSeleccionados.contains(gasto.id);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Categoría e ícono
-            Row(
-              children: [
+    return InkWell(
+      onLongPress: () => _activarSeleccion(gasto),
+      onTap: () {
+        if (modoSeleccion) {
+          _toggleSeleccion(gasto);
+        }
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: estaSeleccionado ? Colors.blue.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Categoría e ícono
+              Row(
+                children: [
+                if (modoSeleccion) ...[
+                  Icon(
+                    estaSeleccionado
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                    color: estaSeleccionado ? Colors.blue : Colors.grey,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Icon(
                   IconHelper.iconList[categoria.icono] ?? Icons.category,
                   color: Colors.grey[700],
@@ -461,13 +518,20 @@ class _GastosPageState extends State<GastosPage> {
       appBar: AppBar(
         title: const Text('Gastos', style: TextStyle( color: AppColors.secondaryButtonText),),
         actions: [
-          IconButton(
-            icon: Icon(
-              mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
+          if (modoSeleccion)
+            IconButton(
+              icon: const Icon(Icons.close),
+              color: AppColors.secondaryButtonText,
+              onPressed: _salirModoSeleccion,
+            )
+          else
+            IconButton(
+              icon: Icon(
+                mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
+              ),
+              color: AppColors.secondaryButtonText,
+              onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
             ),
-            color: AppColors.secondaryButtonText,
-            onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
-          ),
         ],
       ),
       drawer: const MainDrawer(currentRoute: '/gastos'),
@@ -593,6 +657,45 @@ class _GastosPageState extends State<GastosPage> {
 
         ],
       ),
+      bottomNavigationBar: modoSeleccion
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade600,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total seleccionado:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '\$ ${formatPeso.format(_totalSeleccionado)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push<Gasto?>(
