@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_multi_formatter/formatters/currency_input_formatter.dart';
 import 'package:flutter_multi_formatter/formatters/money_input_enums.dart';
 import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
 import 'package:tubilletera/main_drawer.dart';

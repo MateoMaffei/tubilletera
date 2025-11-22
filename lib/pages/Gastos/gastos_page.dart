@@ -25,6 +25,8 @@ class _GastosPageState extends State<GastosPage> {
 
   List<Categoria> categorias = [];
 
+  bool modoSeleccion = false;
+  final Set<String> gastosSeleccionados = {};
 
   DateTime selectedDate = DateTime.now();
   String? categoriaSeleccionada;
@@ -165,7 +167,42 @@ class _GastosPageState extends State<GastosPage> {
     );
   }
 
-  Widget _buildGastoCard(Gasto gasto, Categoria categoria) {
+  void _activarModoSeleccion(Gasto gasto) {
+    setState(() {
+      modoSeleccion = true;
+      gastosSeleccionados
+        ..clear()
+        ..add(gasto.id);
+    });
+  }
+
+  void _toggleSeleccion(Gasto gasto) {
+    setState(() {
+      if (gastosSeleccionados.contains(gasto.id)) {
+        gastosSeleccionados.remove(gasto.id);
+        if (gastosSeleccionados.isEmpty) {
+          modoSeleccion = false;
+        }
+      } else {
+        gastosSeleccionados.add(gasto.id);
+      }
+    });
+  }
+
+  void _salirModoSeleccion() {
+    setState(() {
+      modoSeleccion = false;
+      gastosSeleccionados.clear();
+    });
+  }
+
+  double _totalSeleccionado(List<Gasto> gastos) {
+    return gastos
+        .where((g) => gastosSeleccionados.contains(g.id))
+        .fold(0, (total, gasto) => total + gasto.monto);
+  }
+
+  Widget _buildGastoCard(Gasto gasto, Categoria categoria, bool seleccionado) {
     final ahora = DateTime.now();
     final diasRestantes = gasto.fechaVencimiento.difference(ahora).inDays;
     final estaVencido = diasRestantes < 0;
@@ -199,24 +236,49 @@ class _GastosPageState extends State<GastosPage> {
         ? AppColors.porVencerText
         : AppColors.pendienteText;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return GestureDetector(
+      onLongPress: () {
+        if (modoSeleccion) {
+          _toggleSeleccion(gasto);
+        } else {
+          _activarModoSeleccion(gasto);
+        }
+      },
+      onTap: () {
+        if (modoSeleccion) {
+          _toggleSeleccion(gasto);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: seleccionado ? Colors.grey.shade100 : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+          border: seleccionado
+              ? Border.all(color: AppColors.secondaryButton, width: 1.5)
+              : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (modoSeleccion)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Checkbox(
+                    value: seleccionado,
+                    onChanged: (_) => _toggleSeleccion(gasto),
+                    activeColor: AppColors.secondaryButton,
+                  ),
+                ),
             // Categoría e ícono
             Row(
               children: [
@@ -379,6 +441,7 @@ class _GastosPageState extends State<GastosPage> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -458,164 +521,209 @@ class _GastosPageState extends State<GastosPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gastos', style: TextStyle( color: AppColors.secondaryButtonText),),
-        actions: [
-          IconButton(
-            icon: Icon(
-              mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
-            ),
-            color: AppColors.secondaryButtonText,
-            onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
-          ),
-        ],
-      ),
-      drawer: const MainDrawer(currentRoute: '/gastos'),
-      body: Column(
-        children: [
-          AnimatedCrossFade(
-            crossFadeState:
-                mostrarFiltros ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-            duration: const Duration(milliseconds: 300),
-            firstChild: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final picked = await showMonthPicker(
-                        context: context,
-                        initialDate: tempDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100)
-                      );
-                      if (picked != null) {
-                        setState(() => tempDate = picked);
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_month),
-                    label: Text(DateFormat('MMMM yyyy', 'es_ES').format(selectedDate).toUpperCase()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade100,
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String?>(
-                    isExpanded: true,
-                    value: tempCategoria,
-                    hint: const Text('Todas las categorías'),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text('Todas')),
-                      ...categorias.map((cat) => DropdownMenuItem(
-                            value: cat.id,
-                            child: Text(cat.descripcion),
-                          )),
-                    ],
-                    onChanged: (value) => setState(() => tempCategoria = value),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<bool?>(
-                    isExpanded: true,
-                    value: tempEstado,
-                    hint: const Text('Estado'),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('Todos')),
-                      DropdownMenuItem(value: true, child: Text('Abonados')),
-                      DropdownMenuItem(value: false, child: Text('Pendientes')),
-                    ],
-                    onChanged: (value) => setState(() => tempEstado = value),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        selectedDate = tempDate;
-                        categoriaSeleccionada = tempCategoria;
-                        estadoSeleccionado = tempEstado;
-                      });
-                    },
-                    icon: const Icon(Icons.filter_alt, color: Colors.black87),
-                    label: const Text('Aplicar filtros', style: TextStyle(color: Colors.black87)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    ),
-                  ),
-                ],
+    return StreamBuilder<List<Gasto>>(
+      stream: _filtrarGastos(),
+      builder: (context, snapshot) {
+        final gastos = snapshot.data ?? [];
+        final pendientes = _gastosPendientes(gastos);
+        final abonados = _gastosAbonados(gastos);
+        final totalSeleccionado = _totalSeleccionado(gastos);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Gastos', style: TextStyle( color: AppColors.secondaryButtonText),),
+            actions: [
+              if (modoSeleccion)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  color: AppColors.secondaryButtonText,
+                  onPressed: _salirModoSeleccion,
+                ),
+              IconButton(
+                icon: Icon(
+                  mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
+                ),
+                color: AppColors.secondaryButtonText,
+                onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
               ),
-            ),
-            secondChild: const SizedBox.shrink(),
+            ],
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: StreamBuilder<List<Gasto>>(
-              stream: _filtrarGastos(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final gastos = snapshot.data ?? [];
-                final pendientes = _gastosPendientes(gastos);
-                final abonados = _gastosAbonados(gastos);
-                return ListView(
-                  children: [
-                    ...pendientes.map((gasto) {
-                      final categoria = _buscarCategoria(gasto.idCategoria);
-                      return _buildGastoCard(gasto, categoria);
-                    }),
-                    if (abonados.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: const [
-                            Expanded(child: Divider()),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                'Abonados',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            Expanded(child: Divider()),
-                          ],
+          drawer: const MainDrawer(currentRoute: '/gastos'),
+          body: Column(
+            children: [
+              AnimatedCrossFade(
+                crossFadeState:
+                    mostrarFiltros ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                duration: const Duration(milliseconds: 300),
+                firstChild: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final picked = await showMonthPicker(
+                            context: context,
+                            initialDate: tempDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100)
+                          );
+                          if (picked != null) {
+                            setState(() => tempDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_month),
+                        label: Text(DateFormat('MMMM yyyy', 'es_ES').format(selectedDate).toUpperCase()),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade100,
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
-                      ...abonados.map((gasto) {
-                        final categoria = _buscarCategoria(gasto.idCategoria);
-                        return _buildGastoCard(gasto, categoria);
-                      }),
+                      const SizedBox(height: 8),
+                      DropdownButton<String?>(
+                        isExpanded: true,
+                        value: tempCategoria,
+                        hint: const Text('Todas las categorías'),
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('Todas')),
+                          ...categorias.map((cat) => DropdownMenuItem(
+                                value: cat.id,
+                                child: Text(cat.descripcion),
+                              )),
+                        ],
+                        onChanged: (value) => setState(() => tempCategoria = value),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButton<bool?>(
+                        isExpanded: true,
+                        value: tempEstado,
+                        hint: const Text('Estado'),
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('Todos')),
+                          DropdownMenuItem(value: true, child: Text('Abonados')),
+                          DropdownMenuItem(value: false, child: Text('Pendientes')),
+                        ],
+                        onChanged: (value) => setState(() => tempEstado = value),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            selectedDate = tempDate;
+                            categoriaSeleccionada = tempCategoria;
+                            estadoSeleccionado = tempEstado;
+                          });
+                        },
+                        icon: const Icon(Icons.filter_alt, color: Colors.black87),
+                        label: const Text('Aplicar filtros', style: TextStyle(color: Colors.black87)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade200,
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        ),
+                      ),
                     ],
-                  ],
-                );
-              },
-            ),
-          ),
+                  ),
+                ),
+                secondChild: const SizedBox.shrink(),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: snapshot.connectionState == ConnectionState.waiting
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        children: [
+                          ...pendientes.map((gasto) {
+                            final categoria = _buscarCategoria(gasto.idCategoria);
+                            final seleccionado =
+                                gastosSeleccionados.contains(gasto.id);
+                            return _buildGastoCard(gasto, categoria, seleccionado);
+                          }),
+                          if (abonados.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: const [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text(
+                                      'Abonados',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+                            ),
+                            ...abonados.map((gasto) {
+                              final categoria = _buscarCategoria(gasto.idCategoria);
+                              final seleccionado =
+                                  gastosSeleccionados.contains(gasto.id);
+                              return _buildGastoCard(gasto, categoria, seleccionado);
+                            }),
+                          ],
+                          if (modoSeleccion)
+                            const SizedBox(height: 80),
+                        ],
+                      ),
+              ),
 
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push<Gasto?>(
-            context,
-            MaterialPageRoute(builder: (_) => const GastoFormPage()),
-          );
-          setState(() {}); // Refresca la lista
-        },
-        backgroundColor: AppColors.secondaryButton,
-        child: const Icon(Icons.add),
-      ),
+            ],
+          ),
+          bottomNavigationBar: modoSeleccion
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total seleccionado:',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        '\$ ${formatPeso.format(totalSeleccionado)}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondaryButton,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : null,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () async {
+              await Navigator.push<Gasto?>(
+                context,
+                MaterialPageRoute(builder: (_) => const GastoFormPage()),
+              );
+              setState(() {}); // Refresca la lista
+            },
+            backgroundColor: AppColors.secondaryButton,
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 }
