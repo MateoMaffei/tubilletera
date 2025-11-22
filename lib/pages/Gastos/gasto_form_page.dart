@@ -103,7 +103,7 @@ class _GastoFormPageState extends State<GastoFormPage> {
         estado: false,
         idUsuario: FirebaseAuth.instance.currentUser!.uid,
       );
-      await gastoService.crearGasto(gasto);
+      await gastoService.crear(gasto);
     } else {
       final gasto = Gasto(
         id: widget.gasto!.id,
@@ -116,7 +116,7 @@ class _GastoFormPageState extends State<GastoFormPage> {
         estado: widget.gasto!.estado,
         idUsuario: widget.gasto!.idUsuario,
       );
-      await gastoService.actualizarGasto(gasto);
+      await gastoService.actualizar(gasto);
     }
 
     if (mounted) Navigator.pop(context, widget.gasto);
