@@ -23,13 +23,14 @@ class IngresoAdapter extends TypeAdapter<Ingreso> {
       fechaVencimiento: fields[3] as DateTime,
       estado: fields[4] as bool,
       fechaCreacion: fields[5] as DateTime,
+      detalles: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Ingreso obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class IngresoAdapter extends TypeAdapter<Ingreso> {
       ..writeByte(4)
       ..write(obj.estado)
       ..writeByte(5)
-      ..write(obj.fechaCreacion);
+      ..write(obj.fechaCreacion)
+      ..writeByte(6)
+      ..write(obj.detalles);
   }
 
   @override
