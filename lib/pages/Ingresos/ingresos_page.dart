@@ -243,6 +243,18 @@ class _IngresosPageState extends State<IngresosPage> {
                 ),
               ],
             ),
+            if (ingreso.detalles?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Detalles',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                ingreso.detalles!,
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+            ],
           ],
         ),
       ),

@@ -19,6 +19,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
   final _formKey = GlobalKey<FormState>();
   final nombreController = TextEditingController();
   final montoController = TextEditingController();
+  final detallesController = TextEditingController();
 
   final ingresoService = IngresoService();
 
@@ -33,6 +34,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
       nombreController.text = ing.nombreDeudor;
       estado = ing.estado;
       fechaVencimiento = ing.fechaVencimiento;
+      detallesController.text = ing.detalles ?? '';
       montoController.text = CurrencyInputFormatter(
         leadingSymbol: '\$ ',
         thousandSeparator: ThousandSeparator.Period,
@@ -42,6 +44,14 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
         TextEditingValue(text: ing.monto.toStringAsFixed(2)),
       ).text;
     }
+  }
+
+  @override
+  void dispose() {
+    nombreController.dispose();
+    montoController.dispose();
+    detallesController.dispose();
+    super.dispose();
   }
 
   Future<void> _seleccionarFecha() async {
@@ -73,6 +83,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
     final nombre = nombreController.text.trim();
     final rawValue = limpiarMonto(montoController.text);
     final monto = double.tryParse(rawValue) ?? 0.0;
+    final detalles = detallesController.text.trim().isEmpty ? null : detallesController.text.trim();
 
     if (widget.ingreso == null) {
       await ingresoService.crearIngreso(
@@ -80,6 +91,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
         estado: estado,
+        detalles: detalles,
       );
     } else {
       await ingresoService.actualizarIngreso(
@@ -88,6 +100,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
         estado: estado,
+        detalles: detalles,
       );
     }
 
@@ -133,6 +146,12 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
                 label: 'Fecha de vencimiento',
                 selectedDate: fechaVencimiento,
                 onTap: _seleccionarFecha,
+              ),
+              const SizedBox(height: 10),
+              CustomInput(
+                label: 'Detalles',
+                controller: detallesController,
+                maxLines: 3,
               ),
               const SizedBox(height: 10),
               SwitchListTile(
