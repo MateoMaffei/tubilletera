@@ -11,12 +11,11 @@ plugins {
 android {
     namespace = "com.example.tubilletera"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        isCoreLibraryDesugaringEnabled = true // 👈 ESTA ES LA CLAVE
     }
 
     kotlinOptions {

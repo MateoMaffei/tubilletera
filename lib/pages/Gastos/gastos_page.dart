@@ -438,6 +438,7 @@ class _GastosPageState extends State<GastosPage> {
           ],
         ),
       ),
+      ),
     );
   }
 
