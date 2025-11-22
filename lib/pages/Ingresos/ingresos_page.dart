@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/cuota_hive.dart';
+import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:tubilletera/services/deudor_services.dart';
+import 'package:tubilletera/services/ingreso_services.dart';
 import 'package:tubilletera/services/plan_cuotas_services.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 import 'deudores_page.dart';
+import 'ingresos_form_page.dart';
 import 'plan_cuotas_form_page.dart';
 
 class IngresosPage extends StatefulWidget {
@@ -19,13 +23,26 @@ class IngresosPage extends StatefulWidget {
 class _IngresosPageState extends State<IngresosPage> {
   final planService = PlanCuotasService();
   final deudorService = DeudorService();
+  final ingresoService = IngresoService();
   final formatPeso = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
 
-  void _abrirFormulario({PlanCuotasDetalle? detalle}) async {
+  DateTime selectedMonth = DateTime.now();
+
+  void _abrirPlanFormulario({PlanCuotasDetalle? detalle}) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PlanCuotasFormPage(plan: detalle?.plan),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  void _abrirIngresoFormulario({Ingreso? ingreso}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IngresosFormPage(ingreso: ingreso),
       ),
     );
     if (mounted) setState(() {});
@@ -54,9 +71,43 @@ class _IngresosPageState extends State<IngresosPage> {
     );
   }
 
+  void _confirmarEliminarIngreso(Ingreso ingreso) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar ingreso'),
+        content: Text('¿Eliminar el ingreso "${ingreso.nombreDeudor}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              await ingresoService.eliminarIngreso(ingreso.id);
+              if (mounted) {
+                Navigator.pop(context);
+                setState(() {});
+              }
+            },
+            child: const Text('Eliminar'),
+          )
+        ],
+      ),
+    );
+  }
+
   Future<void> _registrarPagoCuota(Cuota cuota) async {
     await planService.marcarCuotaComoPagada(cuota, !cuota.pagada);
     if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleCobroIngreso(Ingreso ingreso) async {
+    await ingresoService.marcarCobrado(ingreso, !ingreso.estado);
+    if (mounted) setState(() {});
+  }
+
+  List<Ingreso> _ingresosDelMes() {
+    final ingresos = ingresoService.obtenerPorMes(selectedMonth.year, selectedMonth.month);
+    ingresos.sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
+    return ingresos;
   }
 
   Widget _buildCuotasChips(List<Cuota> cuotas) {
@@ -117,7 +168,7 @@ class _IngresosPageState extends State<IngresosPage> {
                 onSelected: (value) {
                   switch (value) {
                     case 'editar':
-                      _abrirFormulario(detalle: detalle);
+                      _abrirPlanFormulario(detalle: detalle);
                       break;
                     case 'eliminar':
                       _confirmarEliminarPlan(detalle);
@@ -166,58 +217,190 @@ class _IngresosPageState extends State<IngresosPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildPlanesTab() {
     final planes = planService.obtenerPlanesConCuotas();
     final totalCuotasAdeudadas = planes.fold<int>(0, (sum, p) => sum + p.cuotasAdeudadas);
-    final totalMontoAdeudado =
-        planes.fold<double>(0, (sum, p) => sum + p.montoTotalAdeudado);
+    final totalMontoAdeudado = planes.fold<double>(0, (sum, p) => sum + p.montoTotalAdeudado);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Planes de cuotas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.people_outline),
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const DeudoresPage()));
-              if (mounted) setState(() {});
-            },
-          )
-        ],
-      ),
-      drawer: const MainDrawer(currentRoute: '/ingresos'),
-      body: planes.isEmpty
-          ? const Center(child: Text('No hay planes cargados'))
-          : ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    color: AppColors.primaryLight,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Resumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text('Cuotas adeudadas al día de hoy: $totalCuotasAdeudadas'),
-                          Text('Monto total adeudado: ${formatPeso.format(totalMontoAdeudado)}'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                ...planes.map(_buildPlanCard).toList(),
+    if (planes.isEmpty) {
+      return const Center(child: Text('No hay planes cargados'));
+    }
+
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            color: AppColors.primaryLight,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Resumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Cuotas adeudadas al día de hoy: $totalCuotasAdeudadas'),
+                  Text('Monto total adeudado: ${formatPeso.format(totalMontoAdeudado)}'),
+                ],
+              ),
+            ),
+          ),
+        ),
+        ...planes.map(_buildPlanCard).toList(),
+      ],
+    );
+  }
+
+  Widget _buildIngresoCard(Ingreso ingreso) {
+    final fecha = DateFormat('dd/MM/yyyy').format(ingreso.fechaVencimiento);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        leading: Checkbox(
+          value: ingreso.estado,
+          onChanged: (_) => _toggleCobroIngreso(ingreso),
+        ),
+        title: Text(ingreso.nombreDeudor, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Vence: $fecha'),
+            Text(ingreso.estado ? 'Cobrado' : 'Pendiente',
+                style: TextStyle(color: ingreso.estado ? Colors.green : Colors.orange)),
+          ],
+        ),
+        trailing: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(formatPeso.format(ingreso.monto), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                switch (value) {
+                  case 'editar':
+                    _abrirIngresoFormulario(ingreso: ingreso);
+                    break;
+                  case 'eliminar':
+                    _confirmarEliminarIngreso(ingreso);
+                    break;
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'editar', child: Text('Editar')),
+                PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _abrirFormulario(),
-        backgroundColor: AppColors.secondaryButton,
-        child: const Icon(Icons.add),
+          ],
+        ),
+        onTap: () => _toggleCobroIngreso(ingreso),
+        onLongPress: () => _confirmarEliminarIngreso(ingreso),
       ),
+    );
+  }
+
+  Widget _buildIngresosTab() {
+    final ingresos = _ingresosDelMes();
+    final total = ingresos.fold<double>(0, (sum, i) => sum + i.monto);
+    final cobrados = ingresos.where((i) => i.estado).fold<double>(0, (sum, i) => sum + i.monto);
+    final pendientes = total - cobrados;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () async {
+              final picked = await showMonthPicker(
+                context: context,
+                initialDate: selectedMonth,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(DateTime.now().year + 1),
+              );
+              if (picked != null) setState(() => selectedMonth = picked);
+            },
+            icon: const Icon(Icons.calendar_month_outlined),
+            label: Text(DateFormat.yMMMM('es_AR').format(selectedMonth),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        Card(
+          color: AppColors.primaryLight,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Resumen de ingresos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('Total del mes: ${formatPeso.format(total)}'),
+                Text('Cobrado: ${formatPeso.format(cobrados)}'),
+                Text('Pendiente: ${formatPeso.format(pendientes)}'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (ingresos.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(child: Text('No hay ingresos registrados para este mes')),
+          )
+        else
+          ...ingresos.map(_buildIngresoCard),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Builder(builder: (context) {
+        final tabController = DefaultTabController.of(context)!;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Ingresos'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.people_outline),
+                onPressed: () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const DeudoresPage()));
+                  if (mounted) setState(() {});
+                },
+              )
+            ],
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: 'Ingresos'),
+                Tab(text: 'Planes de cuotas'),
+              ],
+            ),
+          ),
+          drawer: const MainDrawer(currentRoute: '/ingresos'),
+          body: TabBarView(
+            children: [
+              // Ingresos simples
+              _buildIngresosTab(),
+              // Planes de cuotas
+              _buildPlanesTab(),
+            ],
+          ),
+          floatingActionButton: AnimatedBuilder(
+            animation: tabController,
+            builder: (context, _) {
+              final esTabIngresos = tabController.index == 0;
+              return FloatingActionButton(
+                onPressed: esTabIngresos ? _abrirIngresoFormulario : _abrirPlanFormulario,
+                backgroundColor: AppColors.secondaryButton,
+                child: Icon(esTabIngresos ? Icons.add : Icons.playlist_add),
+              );
+            },
+          ),
+        );
+      }),
     );
   }
 }

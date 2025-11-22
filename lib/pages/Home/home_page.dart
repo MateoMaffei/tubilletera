@@ -8,6 +8,7 @@ import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
+import 'package:tubilletera/model/cuota_hive.dart';
 import 'package:tubilletera/theme/app_colors.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,6 +26,7 @@ class _HomePageState extends State<HomePage> {
     final gastosBox = Hive.box<Gasto>('gastoBox');
     final categoriasBox = Hive.box<Categoria>('categoriasBox');
     final ingresosBox = Hive.box<Ingreso>('ingresoBox');
+    final cuotasBox = Hive.box<Cuota>('cuotasBox');
     final usersBox = Hive.box('usersBox');
     final email = usersBox.get('loggedUser');
     final user = usersBox.get(email);
@@ -39,12 +41,19 @@ class _HomePageState extends State<HomePage> {
     final ingresosDelMes = ingresosBox.values.where((ing) =>
       ing.fechaVencimiento.month == selectedMonth.month &&
       ing.fechaVencimiento.year == selectedMonth.year).toList();
+    final cuotasDelMes = cuotasBox.values.where((c) =>
+      c.fechaVencimiento.month == selectedMonth.month &&
+      c.fechaVencimiento.year == selectedMonth.year).toList();
 
     final totalGastado = todosLosGastos.fold<double>(0.0, (sum, g) => sum + g.monto);
     final totalPagado = todosLosGastos.where((g) => g.estado).fold<double>(0.0, (sum, g) => sum + g.monto);
     final restantePagar = totalGastado - totalPagado;
-    final totalIngresos = ingresosDelMes.fold<double>(0.0, (sum, ing) => sum + ing.monto);
-    final cobrados = ingresosDelMes.where((ing) => ing.estado).fold<double>(0.0, (sum, ing) => sum + ing.monto);
+    final totalIngresosSimples = ingresosDelMes.fold<double>(0.0, (sum, ing) => sum + ing.monto);
+    final totalCuotas = cuotasDelMes.fold<double>(0.0, (sum, cuota) => sum + cuota.montoCuota);
+    final cobradosSimples = ingresosDelMes.where((ing) => ing.estado).fold<double>(0.0, (sum, ing) => sum + ing.monto);
+    final cuotasCobradas = cuotasDelMes.where((c) => c.pagada).fold<double>(0.0, (sum, cuota) => sum + cuota.montoCuota);
+    final totalIngresos = totalIngresosSimples + totalCuotas;
+    final cobrados = cobradosSimples + cuotasCobradas;
     final baseIngresos = totalIngresos > 0 ? totalIngresos : sueldo;
     final disponible = baseIngresos - totalGastado;
 

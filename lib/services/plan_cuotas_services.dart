@@ -139,4 +139,20 @@ class PlanCuotasService {
     }
     await _eliminarCuotasPlan(planId);
   }
+
+  List<Cuota> obtenerCuotasPorMes(int anio, int mes) {
+    return _cuotasBox.values
+        .where((c) => c.fechaVencimiento.year == anio && c.fechaVencimiento.month == mes)
+        .toList();
+  }
+
+  double totalCuotasMes(int anio, int mes) {
+    return obtenerCuotasPorMes(anio, mes).fold(0, (sum, c) => sum + c.montoCuota);
+  }
+
+  double totalCuotasCobradasMes(int anio, int mes) {
+    return obtenerCuotasPorMes(anio, mes)
+        .where((c) => c.pagada)
+        .fold(0, (sum, c) => sum + c.montoCuota);
+  }
 }
