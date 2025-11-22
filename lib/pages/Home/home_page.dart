@@ -9,6 +9,7 @@ import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:tubilletera/theme/app_colors.dart';
+import 'package:tubilletera/services/gasto_tercero_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   DateTime selectedMonth = DateTime.now();
+  final gastoTerceroService = GastoTerceroService();
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,10 @@ class _HomePageState extends State<HomePage> {
     final cobrados = ingresosDelMes.where((ing) => ing.estado).fold<double>(0.0, (sum, ing) => sum + ing.monto);
     final baseIngresos = totalIngresos > 0 ? totalIngresos : sueldo;
     final disponible = baseIngresos - totalGastado;
+    final totalTercerosPendiente = gastoTerceroService.totalPendienteDelMes(
+      selectedMonth.year,
+      selectedMonth.month,
+    );
 
     final gastosPorCategoria = <String, double>{};
     for (final gasto in todosLosGastos) {
