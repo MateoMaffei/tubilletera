@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:tubilletera/helpers/iconos_disponibles.dart';
 import 'package:tubilletera/main_drawer.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
-import 'package:tubilletera/services/categoria_service_firebase.dart';
 import 'package:tubilletera/services/categoria_services.dart';
 import 'package:uuid/uuid.dart';
 
