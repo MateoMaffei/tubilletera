@@ -251,50 +251,47 @@ class _IngresosPageState extends State<IngresosPage> {
     );
   }
 
-  Widget _buildIngresoCard(Ingreso ingreso) {
+  Widget _buildIngresoTile(Ingreso ingreso) {
     final fecha = DateFormat('dd/MM/yyyy').format(ingreso.fechaVencimiento);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: Checkbox(
-          value: ingreso.estado,
-          onChanged: (_) => _toggleCobroIngreso(ingreso),
-        ),
-        title: Text(ingreso.nombreDeudor, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Vence: $fecha'),
-            Text(ingreso.estado ? 'Cobrado' : 'Pendiente',
-                style: TextStyle(color: ingreso.estado ? Colors.green : Colors.orange)),
-          ],
-        ),
-        trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(formatPeso.format(ingreso.monto), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                switch (value) {
-                  case 'editar':
-                    _abrirIngresoFormulario(ingreso: ingreso);
-                    break;
-                  case 'eliminar':
-                    _confirmarEliminarIngreso(ingreso);
-                    break;
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'editar', child: Text('Editar')),
-                PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
-              ],
-            ),
-          ],
-        ),
-        onTap: () => _toggleCobroIngreso(ingreso),
-        onLongPress: () => _confirmarEliminarIngreso(ingreso),
+    return ListTile(
+      leading: Checkbox(
+        value: ingreso.estado,
+        onChanged: (_) => _toggleCobroIngreso(ingreso),
       ),
+      title: Text(ingreso.nombreDeudor, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Vence: $fecha'),
+          Text(ingreso.estado ? 'Cobrado' : 'Pendiente',
+              style: TextStyle(color: ingreso.estado ? Colors.green : Colors.orange)),
+        ],
+      ),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(formatPeso.format(ingreso.monto), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'editar':
+                  _abrirIngresoFormulario(ingreso: ingreso);
+                  break;
+                case 'eliminar':
+                  _confirmarEliminarIngreso(ingreso);
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'editar', child: Text('Editar')),
+              PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+            ],
+          ),
+        ],
+      ),
+      onTap: () => _toggleCobroIngreso(ingreso),
+      onLongPress: () => _confirmarEliminarIngreso(ingreso),
     );
   }
 
@@ -303,6 +300,11 @@ class _IngresosPageState extends State<IngresosPage> {
     final total = ingresos.fold<double>(0, (sum, i) => sum + i.monto);
     final cobrados = ingresos.where((i) => i.estado).fold<double>(0, (sum, i) => sum + i.monto);
     final pendientes = total - cobrados;
+
+    final ingresosPorDeudor = <String, List<Ingreso>>{};
+    for (final ingreso in ingresos) {
+      ingresosPorDeudor.putIfAbsent(ingreso.nombreDeudor, () => []).add(ingreso);
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -348,7 +350,31 @@ class _IngresosPageState extends State<IngresosPage> {
             child: Center(child: Text('No hay ingresos registrados para este mes')),
           )
         else
-          ...ingresos.map(_buildIngresoCard),
+          ...ingresosPorDeudor.entries.map((entry) {
+            final ingresosDeudor = entry.value..sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
+            final totalDeudor = ingresosDeudor.fold<double>(0, (sum, i) => sum + i.monto);
+            final cobradosDeudor = ingresosDeudor.where((i) => i.estado).fold<double>(0, (sum, i) => sum + i.monto);
+            final pendientesDeudor = totalDeudor - cobradosDeudor;
+
+            return Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(
+                  'Total: ${formatPeso.format(totalDeudor)}  |  Cobrado: ${formatPeso.format(cobradosDeudor)}  |  Pendiente: ${formatPeso.format(pendientesDeudor)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                children: ingresosDeudor
+                    .map((ingreso) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: _buildIngresoTile(ingreso),
+                        ))
+                    .toList(),
+              ),
+            );
+          }),
       ],
     );
   }
