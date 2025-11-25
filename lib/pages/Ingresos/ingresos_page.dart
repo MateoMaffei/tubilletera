@@ -8,7 +8,6 @@ import 'package:tubilletera/services/deudor_services.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
 import 'package:tubilletera/services/plan_cuotas_services.dart';
 import 'package:tubilletera/theme/app_colors.dart';
-
 import 'deudores_page.dart';
 import 'ingresos_form_page.dart';
 import 'plan_cuotas_form_page.dart';
@@ -359,7 +358,7 @@ class _IngresosPageState extends State<IngresosPage> {
     return DefaultTabController(
       length: 2,
       child: Builder(builder: (context) {
-        final tabController = DefaultTabController.of(context)!;
+          final tabController = DefaultTabController.of(context);
         return Scaffold(
           appBar: AppBar(
             title: const Text('Ingresos'),

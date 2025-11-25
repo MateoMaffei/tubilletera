@@ -4,7 +4,6 @@ import 'package:flutter_multi_formatter/formatters/money_input_enums.dart';
 import 'package:intl/intl.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
-import 'package:tubilletera/model/deudor_hive.dart';
 import 'package:tubilletera/model/plan_cuotas_hive.dart';
 import 'package:tubilletera/services/deudor_services.dart';
 import 'package:tubilletera/services/plan_cuotas_services.dart';
