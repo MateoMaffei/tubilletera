@@ -5,9 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:tubilletera/model/categoria_hive.dart';
 import 'package:tubilletera/model/gasto_hive.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
-import 'package:tubilletera/model/deudor_hive.dart';
-import 'package:tubilletera/model/plan_cuotas_hive.dart';
-import 'package:tubilletera/model/cuota_hive.dart';
 import 'package:tubilletera/pages/Bienvenida/bienvenida_page.dart';
 import 'package:tubilletera/pages/Categorias/categorias_page.dart';
 import 'package:tubilletera/pages/Configuraciones/configuraciones_page.dart';
@@ -15,7 +12,6 @@ import 'package:tubilletera/pages/Gastos/gastos_page.dart';
 import 'package:tubilletera/pages/Home/home_page.dart';
 import 'package:tubilletera/pages/IniciarSesion/iniciar_sesion_page.dart';
 import 'package:tubilletera/pages/Ingresos/ingresos_page.dart';
-import 'package:tubilletera/pages/Ingresos/deudores_page.dart';
 import 'package:tubilletera/pages/Registrarse/registrarse_page.dart';
 import 'package:tubilletera/pages/Splash/splash_page.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
@@ -35,15 +31,6 @@ void main() async {
 
   Hive.registerAdapter(IngresoAdapter());
   await Hive.openBox<Ingreso>('ingresoBox');
-
-  Hive.registerAdapter(DeudorAdapter());
-  await Hive.openBox<Deudor>('deudoresBox');
-
-  Hive.registerAdapter(PlanCuotasAdapter());
-  await Hive.openBox<PlanCuotas>('planesCuotasBox');
-
-  Hive.registerAdapter(CuotaAdapter());
-  await Hive.openBox<Cuota>('cuotasBox');
 
   await _asegurarSueldoInicial();
 
@@ -93,7 +80,6 @@ class MyApp extends StatelessWidget {
           '/gastos': (context) => const GastosPage(),
           '/categorias': (context) => const CategoriasPage(),
           '/configuraciones': (context) => const ConfiguracionesPage(),
-          '/deudores': (context) => const DeudoresPage(),
         },
     );
   }
