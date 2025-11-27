@@ -25,6 +25,7 @@ class MainDrawer extends StatelessWidget {
             _buildItem(context, Icons.home_outlined, 'Inicio', '/home'),
             _buildItem(context, Icons.receipt_long_outlined, 'Gastos', '/gastos'),
             _buildItem(context, Icons.attach_money_outlined, 'Ingresos', '/ingresos'),
+            _buildItem(context, Icons.people_outline, 'Deudores', '/deudores'),
             _buildItem(context, Icons.category_outlined, 'Categorías', '/categorias'),
 
             const Spacer(), // empuja lo de abajo
