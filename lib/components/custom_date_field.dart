@@ -33,21 +33,18 @@ class CustomDateField extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(color: Theme.of(context).dividerColor),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, color: Colors.grey),
+                Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                 Padding(padding: EdgeInsetsGeometry.fromLTRB(12, 0, 0, 0)),
                 Expanded(
                   child: Text(
                     displayText,
-                    style: const TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
               ],

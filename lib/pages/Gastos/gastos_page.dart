@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:tubilletera/helpers/iconos_disponibles.dart';
-import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/components/app_shell.dart';
 import 'package:tubilletera/model/categoria.dart';
 import 'package:tubilletera/model/gasto.dart';
 import 'package:tubilletera/pages/Gastos/gasto_form_page.dart';
@@ -458,22 +458,36 @@ class _GastosPageState extends State<GastosPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gastos', style: TextStyle( color: AppColors.secondaryButtonText),),
-        actions: [
-          IconButton(
-            icon: Icon(
-              mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt,
-            ),
-            color: AppColors.secondaryButtonText,
-            onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
-          ),
-        ],
+    return AppShell(
+      section: AppSection.gastos,
+      title: 'Gastos',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push<Gasto?>(
+            context,
+            MaterialPageRoute(builder: (_) => const GastoFormPage()),
+          );
+          setState(() {}); // Refresca la lista
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add),
       ),
-      drawer: const MainDrawer(currentRoute: '/gastos'),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Movimientos del mes', style: TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  onPressed: () => setState(() => mostrarFiltros = !mostrarFiltros),
+                  icon: Icon(mostrarFiltros ? Icons.filter_alt_off : Icons.filter_alt),
+                  color: AppColors.textPrimary,
+                ),
+              ],
+            ),
+          ),
           AnimatedCrossFade(
             crossFadeState:
                 mostrarFiltros ? CrossFadeState.showFirst : CrossFadeState.showSecond,
@@ -498,14 +512,17 @@ class _GastosPageState extends State<GastosPage> {
                     icon: const Icon(Icons.calendar_month),
                     label: Text(DateFormat('MMMM yyyy', 'es_ES').format(selectedDate).toUpperCase()),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade100,
-                      foregroundColor: Colors.black87,
+                      backgroundColor: AppColors.surfaceAlt,
+                      foregroundColor: AppColors.textPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 8),
                   DropdownButton<String?>(
+                    dropdownColor: AppColors.surface,
+                    iconEnabledColor: AppColors.textPrimary,
+                    style: const TextStyle(color: AppColors.textPrimary),
                     isExpanded: true,
                     value: tempCategoria,
                     hint: const Text('Todas las categorías'),
@@ -582,7 +599,7 @@ class _GastosPageState extends State<GastosPage> {
                               child: Text(
                                 'Abonados',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: AppColors.textSecondary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -604,17 +621,6 @@ class _GastosPageState extends State<GastosPage> {
           ),
 
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push<Gasto?>(
-            context,
-            MaterialPageRoute(builder: (_) => const GastoFormPage()),
-          );
-          setState(() {}); // Refresca la lista
-        },
-        backgroundColor: AppColors.secondaryButton,
-        child: const Icon(Icons.add),
       ),
     );
   }

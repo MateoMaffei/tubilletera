@@ -29,26 +29,9 @@ class CustomInput extends StatelessWidget {
   static InputDecoration decoration({required String label, IconData? icon}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(
-        fontFamily: 'Roboto',
-        fontSize: 16,
-        color: Colors.black87,
-      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      filled: false,
-      prefixIcon: icon != null ? Icon(icon, color: Colors.grey[700]) : null,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.green),
-      ),
+      filled: true,
+      prefixIcon: icon != null ? Icon(icon) : null,
     );
   }
 
@@ -61,11 +44,7 @@ class CustomInput extends StatelessWidget {
       keyboardType: keyboardType,
       maxLines: maxLines,
       obscureText: obscureText,
-      style: const TextStyle(
-        fontFamily: 'Roboto',
-        fontSize: 16,
-        color: Colors.black87,
-      ),
+      style: Theme.of(context).textTheme.bodyMedium,
       decoration: decoration(label: label, icon: prefixIcon),
       inputFormatters: inputFormatters
     );

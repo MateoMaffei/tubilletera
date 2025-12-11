@@ -2,34 +2,40 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Fondo
-  static const background = Color(0xFFF9FAFB); // gris claro neutro
+  static const background = Color(0xFF0B1220); // fondo principal oscuro
+  static const surface = Color(0xFF111827); // tarjetas y contenedores
+  static const surfaceAlt = Color(0xFF1F2937);
 
   // Texto
-  static const textPrimary = Color(0xFF1C1C1C); // negro suave
-  static const textSecondary = Color(0xFF6B7280); // gris medio
+  static const textPrimary = Colors.white;
+  static const textSecondary = Color(0xFF9CA3AF);
 
-  // Color principal de la app (verde del logo)
-  static const primary = Color(0xFF007F29);
-  static const primaryLight = Color(0xFFE6F4EC); // verde muy claro para fondos
+  // Paleta principal
+  static const primary = Color(0xFF22D3EE); // celeste brillante
+  static const primaryAlt = Color(0xFF14B8A6); // verde azulado
+  static const accent = Color(0xFFF472B6); // fucsia para detalles
   static const primaryText = Colors.white;
 
   // Botones
-  static const secondaryButton = Color(0xFFE5E7EB); // gris claro
-  static const secondaryButtonText = Color(0xFF374151);
+  static const secondaryButton = Color(0xFF1F2937);
+  static const secondaryButtonText = textPrimary;
 
   // Estados
-  static const pendienteBg = Color(0xFFE0F2FE);
-  static const pendienteText = Color(0xFF0284C7);
+  static const pendienteBg = Color(0x3322D3EE);
+  static const pendienteText = primary;
 
-  static const porVencerBg = Color(0xFFFEF3C7);
-  static const porVencerText = Color(0xFFF59E0B);
+  static const porVencerBg = Color(0x33F59E0B);
+  static const porVencerText = Color(0xFFFBBF24);
 
-  static const vencidoBg = Color(0xFFFEE2E2);
-  static const vencidoText = Color(0xFFDC2626);
+  static const vencidoBg = Color(0x33DC2626);
+  static const vencidoText = Color(0xFFFCA5A5);
 
-  static const abonadoBg = Color(0xFFD1FADF); // verde más cálido
-  static const abonadoText = Color(0xFF007F29); // mismo que primario
+  static const abonadoBg = Color(0x3322C55E);
+  static const abonadoText = Color(0xFF4ADE80);
 
-  // Sombra
-  static const shadow = Color(0x14000000); // negro 10%
+  // Extras visuales
+  static const shadow = Color(0x66000000);
+  static const border = Color(0xFF1F2937);
+  static const gradientStart = Color(0xFF0EA5E9);
+  static const gradientEnd = Color(0xFF0F172A);
 }

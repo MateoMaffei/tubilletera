@@ -74,8 +74,10 @@ class MyApp extends StatelessWidget {
         Locale('es', 'AR'), // Español (Argentina)
         Locale('en', 'US'), // Inglés
       ],
-      title: 'Login Demo',
-      theme: AppTheme.light,
+      title: 'Tu Billetera',
+      theme: AppTheme.dark,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       initialRoute: '/splash',
         routes: {
           '/': (context) => const BienvenidaPage(),
