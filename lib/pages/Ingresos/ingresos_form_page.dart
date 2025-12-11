@@ -19,6 +19,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
   final _formKey = GlobalKey<FormState>();
   final nombreController = TextEditingController();
   final montoController = TextEditingController();
+  final detallesController = TextEditingController();
 
   final ingresoService = IngresoService();
 
@@ -33,14 +34,17 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
       nombreController.text = ing.nombreDeudor;
       estado = ing.estado;
       fechaVencimiento = ing.fechaVencimiento;
-      montoController.text = CurrencyInputFormatter(
-        leadingSymbol: '\$ ',
-        thousandSeparator: ThousandSeparator.Period,
-        mantissaLength: 2,
-      ).formatEditUpdate(
-        const TextEditingValue(),
-        TextEditingValue(text: ing.monto.toStringAsFixed(2)),
-      ).text;
+      montoController.text =
+          CurrencyInputFormatter(
+                leadingSymbol: '\$ ',
+                thousandSeparator: ThousandSeparator.Period,
+                mantissaLength: 2,
+              )
+              .formatEditUpdate(
+                const TextEditingValue(),
+                TextEditingValue(text: ing.monto.toStringAsFixed(2)),
+              )
+              .text;
     }
   }
 
@@ -80,6 +84,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
         estado: estado,
+        descripcion: detallesController.text.trim()
       );
     } else {
       await ingresoService.actualizarIngreso(
@@ -88,6 +93,7 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
         monto: monto,
         fechaVencimiento: fechaVencimiento!,
         estado: estado,
+        descripcion: detallesController.text.trim()
       );
     }
 
@@ -98,7 +104,9 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.ingreso == null ? 'Nuevo Ingreso' : 'Editar Ingreso'),
+        title: Text(
+          widget.ingreso == null ? 'Nuevo Ingreso' : 'Editar Ingreso',
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -110,7 +118,8 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
                 label: 'Nombre del deudor',
                 controller: nombreController,
                 prefixIcon: Icons.person,
-                validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 10),
               CustomInput(
@@ -118,7 +127,8 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
                 prefixIcon: Icons.money,
                 controller: montoController,
                 keyboardType: TextInputType.number,
-                validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Campo requerido' : null,
                 inputFormatters: [
                   CurrencyInputFormatter(
                     leadingSymbol: '\$ ',
@@ -141,11 +151,17 @@ class _IngresosFormPageState extends State<IngresosFormPage> {
                 onChanged: (value) => setState(() => estado = value),
               ),
               const SizedBox(height: 20),
+              CustomInput(
+                label: 'Detalles',
+                controller: detallesController,
+                maxLines: 5,
+              ),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 icon: const Icon(Icons.save),
                 onPressed: _guardar,
                 label: const Text('Guardar ingreso'),
-              )
+              ),
             ],
           ),
         ),

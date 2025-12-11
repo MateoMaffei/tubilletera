@@ -17,6 +17,7 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
   final nombreController = TextEditingController();
   final apellidoController = TextEditingController();
   final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   final sueldoController = TextEditingController();
   DateTime? fechaNacimiento;
   bool usarBiometria = false;
@@ -36,6 +37,7 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
       emailController.text = email;
       nombreController.text = user['nombre'] ?? '';
       apellidoController.text = user['apellido'] ?? '';
+      passwordController.text = user['password'] ?? '';
       final sueldoRaw = user['sueldo'];
       
       if (sueldoRaw != null) {
@@ -135,6 +137,12 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
             CustomInput(label: "Apellido", controller: apellidoController, enable: false),
             const SizedBox(height: 10),
             CustomInput(label: "Email", controller: emailController, enable: false),
+            const SizedBox(height: 10),
+            CustomInput(
+              label: "Password",
+              controller: passwordController,
+              enable: false,
+            ),
             const SizedBox(height: 10),
             CustomDateField(
               label: "Fecha de nacimiento",

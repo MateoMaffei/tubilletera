@@ -25,7 +25,8 @@ class IngresoService {
     required String nombreDeudor,
     required double monto,
     required DateTime fechaVencimiento,
-    bool estado = false,
+    required String descripcion,
+    bool estado = false
   }) async {
     final nuevo = Ingreso(
       id: _uuid.v4(),
@@ -34,6 +35,7 @@ class IngresoService {
       fechaVencimiento: fechaVencimiento,
       estado: estado,
       fechaCreacion: DateTime.now(),
+      descripcion: descripcion
     );
     await _box.add(nuevo);
   }
@@ -43,11 +45,13 @@ class IngresoService {
     required double monto,
     required DateTime fechaVencimiento,
     required bool estado,
+    required String descripcion
   }) async {
     ingreso.nombreDeudor = nombreDeudor;
     ingreso.monto = monto;
     ingreso.fechaVencimiento = fechaVencimiento;
     ingreso.estado = estado;
+    ingreso.descripcion = descripcion;
     await ingreso.save();
   }
 
@@ -82,6 +86,7 @@ class IngresoService {
           nombreDeudor: 'Sueldo mensual',
           monto: sueldo,
           fechaVencimiento: fechaObjetivo,
+          descripcion: ''
         );
       }
     }

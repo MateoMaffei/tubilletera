@@ -21,6 +21,9 @@ class Ingreso extends HiveObject {
   @HiveField(5)
   DateTime fechaCreacion;
 
+  @HiveField(6)
+  String? descripcion;
+
   Ingreso({
     required this.id,
     required this.nombreDeudor,
@@ -28,5 +31,6 @@ class Ingreso extends HiveObject {
     required this.fechaVencimiento,
     this.estado = false,
     required this.fechaCreacion,
+    this.descripcion,
   });
 }
