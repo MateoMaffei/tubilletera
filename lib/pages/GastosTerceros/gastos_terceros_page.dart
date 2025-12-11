@@ -1,11 +1,12 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/components/app_shell.dart';
 import 'package:tubilletera/model/gasto_tercero_hive.dart';
 import 'package:tubilletera/pages/GastosTerceros/gasto_tercero_form_page.dart';
 import 'package:tubilletera/pages/GastosTerceros/gasto_tercero_detalle_page.dart';
 import 'package:tubilletera/services/gasto_tercero_service.dart';
+import 'package:tubilletera/theme/app_colors.dart';
 
 class GastosTercerosPage extends StatefulWidget {
   const GastosTercerosPage({super.key});
@@ -27,18 +28,31 @@ class _GastosTercerosPageState extends State<GastosTercerosPage> {
         ? gastos
         : gastos.where((g) => g.persona == personaSeleccionada).toList();
     final totalDebe = filtrados.fold<double>(0.0, (sum, g) {
-      return sum +
-          g.cuotas.where((c) => !c.pagada).fold(0.0, (s, c) => s + c.monto);
+      return sum + g.cuotas.where((c) => !c.pagada).fold(0.0, (s, c) => s + c.monto);
     });
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Gastos de terceros')),
-      drawer: MainDrawer(currentRoute: '/gastos_terceros'),
+    return AppShell(
+      section: AppSection.terceros,
+      title: 'Terceros',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GastoTerceroFormPage()),
+          );
+          setState(() {});
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: DropdownButton<String?>(
+              dropdownColor: AppColors.surface,
+              iconEnabledColor: AppColors.textPrimary,
+              style: const TextStyle(color: AppColors.textPrimary),
               isExpanded: true,
               value: personaSeleccionada,
               hint: const Text('Todas las personas'),
@@ -72,16 +86,6 @@ class _GastosTercerosPageState extends State<GastosTercerosPage> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GastoTerceroFormPage()),
-          );
-          setState(() {});
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

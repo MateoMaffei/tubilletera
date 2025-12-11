@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tubilletera/helpers/iconos_disponibles.dart';
-import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/components/app_shell.dart';
 import 'package:tubilletera/model/categoria.dart';
 import 'package:tubilletera/services/categoria_service_firebase.dart';
 
@@ -142,9 +142,14 @@ class _CategoriasPageState extends State<CategoriasPage> {
       future: categoriaService.obtenerTodas(),
       builder: (context, snapshot) {
         final categorias = snapshot.data ?? [];
-        return Scaffold(
-          appBar: AppBar(title: const Text('Categorías')),
-          drawer: const MainDrawer(currentRoute: '/categorias'),
+        return AppShell(
+          section: AppSection.categorias,
+          title: 'Categorías',
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _mostrarDialogoCategoria(),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add),
+          ),
           body: snapshot.connectionState == ConnectionState.waiting
               ? const Center(child: CircularProgressIndicator())
               : categorias.isEmpty
@@ -153,35 +158,34 @@ class _CategoriasPageState extends State<CategoriasPage> {
                       itemCount: categorias.length,
                       itemBuilder: (_, index) {
                         final categoria = categorias[index];
-                        return ListTile(
-                          leading: Icon(
-                            IconHelper.iconList[categoria.icono] ??
-                                Icons.help_outline,
-                            color: Colors.green,
-                          ),
-                          title: Text(categoria.descripcion),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _mostrarDialogoCategoria(
-                                  categoriaExistente: categoria,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          child: ListTile(
+                            leading: Icon(
+                              IconHelper.iconList[categoria.icono] ??
+                                  Icons.help_outline,
+                              color: AppColors.primary,
+                            ),
+                            title: Text(categoria.descripcion),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => _mostrarDialogoCategoria(
+                                    categoriaExistente: categoria,
+                                  ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () => _confirmarEliminar(categoria),
-                              ),
-                            ],
+                                IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  onPressed: () => _confirmarEliminar(categoria),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _mostrarDialogoCategoria(),
-            child: const Icon(Icons.add),
-          ),
         );
       },
     );

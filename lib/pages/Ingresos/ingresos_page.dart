@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
-import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/components/app_shell.dart';
 import 'package:tubilletera/model/ingreso_hive.dart';
 import 'package:tubilletera/services/ingreso_services.dart';
 import 'package:tubilletera/theme/app_colors.dart';
@@ -253,33 +253,9 @@ class _IngresosPageState extends State<IngresosPage> {
   Widget build(BuildContext context) {
     final ingresos = _ingresosDelMes();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ingresos', style: TextStyle(color: AppColors.secondaryButtonText)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            color: AppColors.secondaryButtonText,
-            onPressed: () async {
-              final picked = await showMonthPicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-              );
-              if (picked != null) {
-                setState(() => selectedDate = picked);
-              }
-            },
-          )
-        ],
-      ),
-      drawer: const MainDrawer(currentRoute: '/ingresos'),
-      body: ingresos.isEmpty
-          ? const Center(child: Text('No hay ingresos para este mes'))
-          : ListView(
-              children: ingresos.map(_buildIngresoCard).toList(),
-            ),
+    return AppShell(
+      section: AppSection.ingresos,
+      title: 'Ingresos',
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push<Ingreso?>(
@@ -288,8 +264,39 @@ class _IngresosPageState extends State<IngresosPage> {
           );
           setState(() {});
         },
-        backgroundColor: AppColors.secondaryButton,
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () async {
+                final picked = await showMonthPicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                }
+              },
+              icon: const Icon(Icons.calendar_month),
+              label: const Text('Elegir mes'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ingresos.isEmpty
+                ? const Center(child: Text('No hay ingresos para este mes'))
+                : ListView(
+                    children: ingresos.map(_buildIngresoCard).toList(),
+                  ),
+          ),
+        ],
       ),
     );
   }

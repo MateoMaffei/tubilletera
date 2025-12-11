@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:tubilletera/components/custom_date_field.dart';
 import 'package:tubilletera/components/custom_input.dart';
-import 'package:tubilletera/main_drawer.dart';
+import 'package:tubilletera/components/app_shell.dart';
 
 class ConfiguracionesPage extends StatefulWidget {
   const ConfiguracionesPage({super.key});
@@ -113,20 +113,28 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
   Widget build(BuildContext context) {
     final iniciales = "${nombreController.text.isNotEmpty ? nombreController.text[0] : ''}${apellidoController.text.isNotEmpty ? apellidoController.text[0] : ''}";
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Configuraciones")),
-      drawer: MainDrawer(currentRoute: '/configuraciones'),
+    return AppShell(
+      section: AppSection.home,
+      title: 'Configuraciones',
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: ListView(
           children: [
             Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.green.shade700,
-                child: Text(
-                  iniciales.toUpperCase(),
-                  style: const TextStyle(fontSize: 24, color: Colors.white),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
+                  boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 16, offset: Offset(0, 8))],
+                ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: AppColors.surface,
+                  child: Text(
+                    iniciales.toUpperCase(),
+                    style: const TextStyle(fontSize: 26, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
@@ -161,6 +169,7 @@ class _ConfiguracionesPageState extends State<ConfiguracionesPage> {
               title: const Text("Autenticación por biometría"),
               value: usarBiometria,
               onChanged: (val) => setState(() => usarBiometria = val),
+              activeColor: AppColors.primary,
             ),
             const SizedBox(height: 10),
             ElevatedButton.icon(
